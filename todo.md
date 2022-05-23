@@ -1,0 +1,2 @@
+- Can we rewrite the type in the mypy hook to Literal[int] from int?
+- Could we use Vector[int](32, 64) as type, which returns VectorSized[int] with static fields 32x64?
