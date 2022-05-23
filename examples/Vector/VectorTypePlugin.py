@@ -11,7 +11,7 @@ from mypy.types import (
 # TODO: write vector verifier in VectorType, use Annotated to add fetch these
 # constraints and apply them here!
 
-VECTOR_TYPE_NAME : Final = "examples.VectorType.Vector"
+VECTOR_TYPE_NAME : Final = "VectorType.Vector"
 
 class HecoPlugin(Plugin):
     def get_type_analyze_hook(self, fullname: str):

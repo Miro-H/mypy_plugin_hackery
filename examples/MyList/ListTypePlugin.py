@@ -7,10 +7,11 @@ from mypy.types import (
     Type, AnyType, TypeOfAny
 )
 
-TYPE_NAME : Final = "MyList.MyList"
+TYPE_NAME : Final = "MyListType.MyList"
 
 class HecoPlugin(Plugin):
     def get_type_analyze_hook(self, fullname: str):
+        print(fullname)
         if fullname == TYPE_NAME:
             return list_analyze_callback
 
