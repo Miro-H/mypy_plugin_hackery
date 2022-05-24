@@ -36,4 +36,4 @@ class Vector(IntTypeArgs, Generic[T, U]):
 def is_valid_vector(ctx: ConstraintContext):
     # TODO: extend functionality to let user define validation function here (e.g.,
     # first type is bool or int, depending on literal of second param)
-    return ctx.validate_types([int, 7])
+    return ctx.validate_types([int, 6])

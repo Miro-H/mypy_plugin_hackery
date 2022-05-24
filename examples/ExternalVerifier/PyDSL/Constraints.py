@@ -1,13 +1,12 @@
+import builtins
 import logging
-
-from cmath import atan
 
 from PyDSL.CustomTypes import IntTypeArgs, BoolTypeArgs
 from .Const import *
-from typing import Callable, Dict, List, Union, Tuple
+from typing import Callable, Dict, List, Union, Tuple, TypeVar
 from mypy.types import (
-    AnyType, Type, TypeOfAny, TypeVarType, RawExpressionType,
-    LiteralType, Instance
+    AnyType, Instance, LiteralType, RawExpressionType,
+    Type, TypeOfAny, TypeVarType
 )
 from mypy.plugin import AnalyzeTypeContext
 
@@ -73,6 +72,9 @@ class ConstraintContext:
                             instance, e.g., for `Vector[int, 6]` this is
                             `builtins.int, Literal[6]`
 
+        types_raw : List[object];   Reconstructed raw types of the type hints,
+                                    e.g., for `Vector[int, 6]` this is [int, 6]
+
         at_ctx : AnalyzeTypeContext;    The full context provided by MyPy to
                                         the type analyzing hooks.
     """
@@ -89,13 +91,15 @@ class ConstraintContext:
         # Analyze types of arguments and convert builtin.{int,bool} literals `a`
         # to `Literal[a]` is custom literal parsing is active.
         self.types = []
+        self.types_raw = []
         self.standard = []
         for arg in at_ctx.type.args:
-            t_parsed, was_custom_parsed = self.parse_type(arg)
-            self.standard.append(was_custom_parsed)
+            t_parsed, t_raw, was_custom_parsed = self.parse_type(arg)
             self.types.append(t_parsed)
+            self.types_raw.append(t_raw)
+            self.standard.append(was_custom_parsed)
 
-    def parse_type(self, t: Type) -> Tuple[Type, bool]:
+    def parse_type(self, t: Type) -> Tuple[Type, object, bool]:
         if isinstance(t, RawExpressionType):
             do_parse_raw_int = (self.allow_raw_int_types
                                 and t.base_type_name == _get_fqcn(int))
@@ -103,22 +107,32 @@ class ConstraintContext:
                                  and t.base_type_name == _get_fqcn(bool))
 
             if do_parse_raw_int or do_parse_raw_bool:
-                t_parsed = LiteralType(
-                    value=t.literal_value,  # type: ignore
+                t_raw = t.literal_value
+                t_lit = LiteralType(
+                    value=t_raw, # type: ignore
                     fallback=self.at_ctx.api.named_type(t.base_type_name, [])
                 )
-                return t_parsed, True
+                return t_lit, t_raw, True
 
-            err = f"Encounteded unexpected raw type {t}"
+            err = PARSE_TYPE_UNEXPECTED_RAW.format(1)
             if t.base_type_name == _get_fqcn(int):
-                err += "; for enabling non-standard raw integer type arguments, " +\
-                    "inherit from `IntTypeArgs`."
+                err += PARSE_TYPE_UNEXPECTED_RAW_PRESUME_INT
             elif t.base_type_name == _get_fqcn(bool):
-                err += "; for enabling non-standard raw Boolean type arguments, " +\
-                    "inherit from `IntTypeArgs`."
+                err += PARSE_TYPE_UNEXPECTED_RAW_PRESUME_BOOL
             logging.warning(err)
 
-        return self.at_ctx.api.analyze_type(t), False
+        t_parsed = self.at_ctx.api.analyze_type(t)
+
+        if isinstance(t_parsed, TypeVarType):
+            return t_parsed, TypeVar, False
+        if isinstance(t_parsed, Instance):
+            if t_parsed.type.name in dir(builtins):
+                return t_parsed, eval(t_parsed.type.name), False
+        elif isinstance(t_parsed, LiteralType):
+            return t_parsed, t_parsed.value, False
+
+        logging.warning(PARSE_TYPE_UNKNOWN_RAW_TYPE_WARNING.format(t_parsed))
+        return t_parsed, None, False
 
     def validate_types(self, exp_types: List[object]) -> bool:
         """
@@ -130,8 +144,7 @@ class ConstraintContext:
         """
 
         # Trivially different
-        l = len(exp_types)
-        if len(self.types) != l:
+        if len(self.types) != len(exp_types):
             return False
 
         # Special case for all TypeVars
@@ -139,19 +152,7 @@ class ConstraintContext:
             return True
 
         # Compare parsed types to expected types and return True iff all match
-        for i, t in enumerate(self.types):
-            print(t, exp_types[i])
-            if isinstance(t, type):
-                if t != exp_types[i]:
-                    return False
-            elif isinstance(t, Instance):
-                if _get_fqcn(exp_types[i]) != t.type._fullname:
-                    return False
-            else:
-                logging.warning(
-                    f"Unknown type {t}, not validated by `validate_types`")
-
-        return True
+        return all([self.types_raw[i] == exp_types[i] for i in range(len(exp_types))])
 
 
 def constraint(obj):
