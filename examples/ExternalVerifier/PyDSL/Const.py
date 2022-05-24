@@ -1,0 +1,2 @@
+TESTED_VERSIONS = ["0.950"]
+DEFAULT_CONSTRAINT_FAILED_ERROR_MSG = "Invalid custom type '{0}'"

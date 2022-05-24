@@ -1,7 +1,6 @@
-from FancyVectorType import Vector
-from typing import List
+from PyDSL_Types import *
 
-x : Vector[int, int]
+x : Vector[int, 6]
 
 # x : Vector[int, 6] = Vector(list(range(1,7)))
 # y : Vector[int, 6] = Vector([1] * 6)

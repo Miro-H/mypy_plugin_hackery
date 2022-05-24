@@ -1,0 +1,1 @@
+from .FancyVectorType import Vector

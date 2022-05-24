@@ -1,15 +1,13 @@
 import logging
 
 from math import prod
-from typing import Generic, MutableSequence, TypeVar, Literal, Tuple
+from typing import Annotated, Generic, MutableSequence, TypeVar, Literal, Tuple
 
-from CustomTypes import IntTypeArgs
-from CustomConstraints import constraint
+from PyDSL.CustomTypes import IntTypeArgs
+from PyDSL.Constraints import ConstraintContext, constraint
 
 T = TypeVar("T")
 U = TypeVar("U")
-
-print('test')
 
 class Vector(IntTypeArgs, Generic[T, U]):
     def __init__(self, l):
@@ -34,5 +32,6 @@ class Vector(IntTypeArgs, Generic[T, U]):
        return self.dim
 
 @constraint(Vector)
-def is_valid_vector():
+def is_valid_vector(ctx : ConstraintContext):
+    print(ctx.types)
     return True
