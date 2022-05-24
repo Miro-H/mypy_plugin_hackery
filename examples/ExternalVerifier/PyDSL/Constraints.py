@@ -1,11 +1,16 @@
+import logging
 
 from cmath import atan
+
+from PyDSL.CustomTypes import IntTypeArgs, BoolTypeArgs
 from .Const import *
 from typing import Callable, Dict, List, Union, Tuple
 from mypy.types import (
-    AnyType, Type, TypeOfAny, RawExpressionType, LiteralType
+    AnyType, Type, TypeOfAny, TypeVarType, RawExpressionType,
+    LiteralType, Instance
 )
 from mypy.plugin import AnalyzeTypeContext
+
 
 class Constraints(object):
     """
@@ -16,14 +21,14 @@ class Constraints(object):
     # Singleton pattern
     def __new__(cls):
         if not hasattr(cls, 'instance'):
-            cls._constraints : Dict[str, Callable] = dict()
+            cls._constraints: Dict[str, Callable] = dict()
             cls.instance = super(Constraints, cls).__new__(cls)
         return cls.instance
 
-    def __setitem__(self, key : str, item : Callable):
+    def __setitem__(self, key: str, item: Callable):
         self._constraints[key] = item
 
-    def __getitem__(self, key : str) -> Callable:
+    def __getitem__(self, key: str) -> Callable:
         return self._constraints[key]
 
     def __repr__(self) -> str:
@@ -31,7 +36,7 @@ class Constraints(object):
 
     def __len__(self) -> int:
         return len(self._constraints)
-    
+
     def items(self):
         return self._constraints.items()
 
@@ -41,46 +46,18 @@ class Constraints(object):
     def values(self):
         return self._constraints.values()
 
-def _get_fqcn(o : object):
+
+def _get_fqcn(o: object):
     """
     Get fully qualified class name
     """
     cn = o
     fqcn = cn.__module__
     if hasattr(cn, '__qualname__'):
-        fqcn += f".{cn.__qualname__}" # type:ignore
-    
+        fqcn += f".{cn.__qualname__}"  # type:ignore
+
     return fqcn
 
-# def heco_vector_analyze_callback(ctx: AnalyzeTypeContext) -> Type:
-    # args = ctx.type.args
-    # t0 = ctx.api.analyze_type(args[0])
-    # t_ts : List[Type] = [t0]
-
-    # if len(args) == 2:
-    #     success = True
-    #     if _is_builtins_int(t0) and _is_literal_int(args[1]):
-    #         # Accept definitions of the form Vector[int, nr], where nr is a literal int
-    #         t_ts = [ 
-    #             t0,
-    #             LiteralType(value=args[1].literal_value, # type: ignore
-    #                 fallback=ctx.api.named_type(args[1].base_type_name, [])) # type: ignore
-    #         ]
-    #     elif isinstance(t0, TypeVarType):
-    #         # Accept definitions in class with unspecified type variables (e.g., Vector[T, U]) 
-    #         t1 = ctx.api.analyze_type(args[1])
-    #         if isinstance(t0, TypeVarType):
-    #             t_ts = [t0, t1]
-    #     else: 
-    #         success = False
-        
-    #     if success:
-    #         r = ctx.api.named_type(VECTOR_TYPE_NAME, t_ts)
-    #         # print("Return r =", r)
-    #         return r
-
-    # ctx.api.fail('Invalid "Vector" type (expected "Vector[int, nr]")', ctx.context)
-    # return AnyType(TypeOfAny.from_error)
 
 class ConstraintContext:
     """
@@ -91,17 +68,26 @@ class ConstraintContext:
         standard : List[bool];  list defining whether the type at the same 
                                 position in `types` was generated following
                                 standard MyPy convention or not.
-        
-        types : List[Type];     MyPy types of the type arguments of the 
-                                instance, e.g., for `Vector[int, 6]` this is
-                                `builtins.int, Literal[6]`
+
+        types : List[Type]; MyPy types of the type arguments of the
+                            instance, e.g., for `Vector[int, 6]` this is
+                            `builtins.int, Literal[6]`
+
+        at_ctx : AnalyzeTypeContext;    The full context provided by MyPy to
+                                        the type analyzing hooks.
     """
 
-    def __init__(self, at_ctx: AnalyzeTypeContext) -> None:
+    def __init__(self, at_ctx: AnalyzeTypeContext, obj) -> None:
         self.at_ctx = at_ctx
 
-        # Analyze types of arguments and convert builtin.{int,bool} literals `a` 
-        # to `Literal[a]`.
+        # If the class inherits from IntTypeArgs and/or BoolTypeArgs, activate
+        # custom literal parsing.
+        mro = obj.mro()
+        self.allow_raw_int_types = IntTypeArgs in obj.mro()
+        self.allow_raw_bool_types = BoolTypeArgs in obj.mro()
+
+        # Analyze types of arguments and convert builtin.{int,bool} literals `a`
+        # to `Literal[a]` is custom literal parsing is active.
         self.types = []
         self.standard = []
         for arg in at_ctx.type.args:
@@ -109,33 +95,83 @@ class ConstraintContext:
             self.standard.append(was_custom_parsed)
             self.types.append(t_parsed)
 
-    def parse_type(self, t : Type) -> Tuple[Type, bool]:
-        if (isinstance(t, RawExpressionType) 
-                and t.base_type_name in [_get_fqcn(int), _get_fqcn(bool)]):
+    def parse_type(self, t: Type) -> Tuple[Type, bool]:
+        if isinstance(t, RawExpressionType):
+            do_parse_raw_int = (self.allow_raw_int_types
+                                and t.base_type_name == _get_fqcn(int))
+            do_parse_raw_bool = (self.allow_raw_bool_types
+                                 and t.base_type_name == _get_fqcn(bool))
 
-            t_parsed = LiteralType(
-                value=t.literal_value, # type: ignore
-                fallback=self.at_ctx.api.named_type(t.base_type_name, [])
-            )
-            return t_parsed, True
-            
+            if do_parse_raw_int or do_parse_raw_bool:
+                t_parsed = LiteralType(
+                    value=t.literal_value,  # type: ignore
+                    fallback=self.at_ctx.api.named_type(t.base_type_name, [])
+                )
+                return t_parsed, True
+
+            err = f"Encounteded unexpected raw type {t}"
+            if t.base_type_name == _get_fqcn(int):
+                err += "; for enabling non-standard raw integer type arguments, " +\
+                    "inherit from `IntTypeArgs`."
+            elif t.base_type_name == _get_fqcn(bool):
+                err += "; for enabling non-standard raw Boolean type arguments, " +\
+                    "inherit from `IntTypeArgs`."
+            logging.warning(err)
+
         return self.at_ctx.api.analyze_type(t), False
 
+    def validate_types(self, exp_types: List[object]) -> bool:
+        """
+        Validate that the given types correspond to a list of expected types.
 
-def constraint(class_name):
+        Additionally, we always accept when all type hints are TypeVars, since
+        the Generic definition of the class is also type checked, e.g.,
+        `Vector[U, V]` as return type of `Vector.copy()`.
+        """
+
+        # Trivially different
+        l = len(exp_types)
+        if len(self.types) != l:
+            return False
+
+        # Special case for all TypeVars
+        if all([isinstance(t, TypeVarType) for t in self.types]):
+            return True
+
+        # Compare parsed types to expected types and return True iff all match
+        for i, t in enumerate(self.types):
+            print(t, exp_types[i])
+            if isinstance(t, type):
+                if t != exp_types[i]:
+                    return False
+            elif isinstance(t, Instance):
+                if _get_fqcn(exp_types[i]) != t.type._fullname:
+                    return False
+            else:
+                logging.warning(
+                    f"Unknown type {t}, not validated by `validate_types`")
+
+        return True
+
+
+def constraint(obj):
     """
     Decorator to add callable constraint to Constraints and process the
     AnalyzeTypeContext from mypy.plugin to a simpler ConstraintContext
     object.
     """
-    def decorate(fn : Callable[[ConstraintContext], Union[bool, Tuple[bool, str]]]):
-        fqcn = _get_fqcn(class_name)
+    def decorate(fn: Callable[[ConstraintContext], Union[bool, Tuple[bool, str]]]):
+        fqcn = _get_fqcn(obj)
 
         def mypy_callback_wrapper(at_ctx: AnalyzeTypeContext) -> Type:
-            constraint_ctx = ConstraintContext(at_ctx)
-            
+            constraint_ctx = ConstraintContext(at_ctx, obj)
+
             success = fn(constraint_ctx)
-            err = DEFAULT_CONSTRAINT_FAILED_ERROR_MSG.format(fqcn)
+            type_args = constraint_ctx.types
+            if not isinstance(type_args, list):
+                type_args = list(type_args)
+
+            err = DEFAULT_CONSTRAINT_FAILED_ERROR_MSG.format(fqcn, type_args)
 
             if isinstance(success, tuple):
                 success, err = success
@@ -149,5 +185,5 @@ def constraint(class_name):
         Constraints()[fqcn] = mypy_callback_wrapper
 
         return mypy_callback_wrapper
-    
+
     return decorate
