@@ -25,6 +25,8 @@ class Constraints(object):
         return cls.instance
 
     def __setitem__(self, key: str, item: Callable):
+        if key in self._constraints:
+            logging.warning(CONSTRAINTS_OVERWRITING_WARNING.format(key))
         self._constraints[key] = item
 
     def __getitem__(self, key: str) -> Callable:
@@ -109,7 +111,7 @@ class ConstraintContext:
             if do_parse_raw_int or do_parse_raw_bool:
                 t_raw = t.literal_value
                 t_lit = LiteralType(
-                    value=t_raw, # type: ignore
+                    value=t_raw,  # type: ignore
                     fallback=self.at_ctx.api.named_type(t.base_type_name, [])
                 )
                 return t_lit, t_raw, True
@@ -153,6 +155,22 @@ class ConstraintContext:
 
         # Compare parsed types to expected types and return True iff all match
         return all([self.types_raw[i] == exp_types[i] for i in range(len(exp_types))])
+
+    def validate_types_with_fn(self,
+                               fn: Callable[..., bool],
+                               allow_type_vars: bool = True) -> Union[bool, Tuple[bool, str]]:
+        """
+        Validate types with custom function, which is called on the recovered raw
+        types of the input.
+
+        The custom function returns a boolean which is true if the type are valid.
+        Optionally, it can return a second value with an error message. 
+        """
+
+        if allow_type_vars and all([isinstance(t, TypeVarType) for t in self.types]):
+            return True
+
+        return fn(*self.types_raw)
 
 
 def constraint(obj):

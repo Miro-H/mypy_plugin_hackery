@@ -34,6 +34,15 @@ class Vector(IntTypeArgs, Generic[T, U]):
 
 @constraint(Vector)
 def is_valid_vector(ctx: ConstraintContext):
-    # TODO: extend functionality to let user define validation function here (e.g.,
-    # first type is bool or int, depending on literal of second param)
-    return ctx.validate_types([int, 6])
+
+    def custom_validator(elem_type, dim):
+        if dim % 10 == 0:
+            return True
+        else:
+            return False, f"Wrong dimension, must be zero modulo 10 but is {dim} = {dim % 10} (mod 10)"
+
+    return ctx.validate_types_with_fn(custom_validator)
+
+# @constraint(Vector)
+# def is_valid_vector(ctx: ConstraintContext):
+#     return ctx.validate_types([int, 10])

@@ -1,4 +1,5 @@
-TESTED_VERSIONS = ["0.950"]
+CONSTRAINTS_OVERWRITING_WARNING = "Overwriting constraint for '{0}'. Only use a single @constraint decorator."
+
 DEFAULT_CONSTRAINT_FAILED_ERROR_MSG = "Invalid custom type '{0}'{1}"
 
 PLUGIN_VERSION_WARNING = "The custom PyDSLPlugin for MyPy was not tested with your MyPy version {0}."
@@ -10,3 +11,5 @@ PARSE_TYPE_UNEXPECTED_RAW_PRESUME_BOOL = "; for enabling non-standard raw Boolea
     "inherit from `IntTypeArgs`."
 
 PARSE_TYPE_UNKNOWN_RAW_TYPE_WARNING = "Could not determine raw type for {0}"
+
+TESTED_VERSIONS = ["0.950"]
