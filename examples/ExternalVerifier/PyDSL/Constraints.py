@@ -2,13 +2,19 @@ import builtins
 import logging
 
 from PyDSL.CustomTypes import IntTypeArgs, BoolTypeArgs
+from PyDSL.TypeParsingVIsitor import TypeParsingVisitor
+
 from .Const import *
-from typing import Callable, Dict, List, Union, Tuple, TypeVar
+
+from typing import Callable, Dict, Final, List, Union, Tuple, TypeVar
 from mypy.types import (
-    AnyType, Instance, LiteralType, RawExpressionType,
-    Type, TypeOfAny, TypeVarType
+    AnyType, CallableType, Instance, LiteralType, PartialType, RawExpressionType,
+    RequiredType, Type, TypeAliasType, TypeOfAny, TypeVarType, UnionType
 )
 from mypy.plugin import AnalyzeTypeContext
+
+NESTED_TYPES: Final = [CallableType, PartialType,
+                       RequiredType, TypeAliasType, UnionType]
 
 
 class Constraints(object):
@@ -48,11 +54,10 @@ class Constraints(object):
         return self._constraints.values()
 
 
-def _get_fqcn(o: object):
+def _get_fqcn(cn: object):
     """
     Get fully qualified class name
     """
-    cn = o
     fqcn = cn.__module__
     if hasattr(cn, '__qualname__'):
         fqcn += f".{cn.__qualname__}"  # type:ignore
@@ -125,16 +130,22 @@ class ConstraintContext:
 
         t_parsed = self.at_ctx.api.analyze_type(t)
 
-        if isinstance(t_parsed, TypeVarType):
-            return t_parsed, TypeVar, False
-        if isinstance(t_parsed, Instance):
-            if t_parsed.type.name in dir(builtins):
-                return t_parsed, eval(t_parsed.type.name), False
-        elif isinstance(t_parsed, LiteralType):
-            return t_parsed, t_parsed.value, False
+        def strategy(results):
+            ret_parsed = []
+            ret_raw = []
+            ret_bool = False
 
-        logging.warning(PARSE_TYPE_UNKNOWN_RAW_TYPE_WARNING.format(t_parsed))
-        return t_parsed, None, False
+            for parsed, raw, custom_bool in results:
+                ret_parsed.append(parsed)
+                ret_raw.append(raw)
+                ret_bool |= custom_bool
+
+            return UnionType(ret_parsed), ret_raw, ret_bool
+
+        visitor = TypeParsingVisitor(strategy)
+        r = t_parsed.accept(visitor)
+        print(r)
+        return r
 
     def validate_types(self, exp_types: List[object]) -> bool:
         """
@@ -169,6 +180,10 @@ class ConstraintContext:
 
         if allow_type_vars and all([isinstance(t, TypeVarType) for t in self.types]):
             return True
+
+        if any([type_raw == None for type_raw in self.types_raw]):
+            logging.error(VALIDATE_TYPE_MISSING_RAW)
+            return False
 
         return fn(*self.types_raw)
 

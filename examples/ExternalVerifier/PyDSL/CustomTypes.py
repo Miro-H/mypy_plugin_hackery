@@ -1,6 +1,8 @@
+import logging
 
-from typing import Literal
+from typing import Literal, Union
 
+from .Const import *
 
 def _recursive_rewrite_literals(params, type_to_rewrite):
     if hasattr(params, '__iter__'):
@@ -25,3 +27,10 @@ class BoolTypeArgs:
     def __class_getitem__(self, params):
         params = _recursive_rewrite_literals(params, bool)
         return super().__class_getitem__(params)
+
+
+class Raw:
+    def __class_getitem__(self, params):
+        params = _recursive_rewrite_literals(params, bool)
+        params = _recursive_rewrite_literals(params, int)
+        return tuple(params)
