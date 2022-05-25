@@ -1,8 +1,9 @@
 import builtins
 import logging
 
-from PyDSL.CustomTypes import IntTypeArgs, BoolTypeArgs
+from PyDSL.CustomTypes import IntTypeArgs, BoolTypeArgs, Raw
 from PyDSL.TypeParsingVIsitor import TypeParsingVisitor
+from PyDSL.InternalUtils import get_fqcn
 
 from .Const import *
 
@@ -54,17 +55,6 @@ class Constraints(object):
         return self._constraints.values()
 
 
-def _get_fqcn(cn: object):
-    """
-    Get fully qualified class name
-    """
-    fqcn = cn.__module__
-    if hasattr(cn, '__qualname__'):
-        fqcn += f".{cn.__qualname__}"  # type:ignore
-
-    return fqcn
-
-
 class ConstraintContext:
     """
     This class holds context that is useful to evaluate if a typed instance
@@ -107,29 +97,6 @@ class ConstraintContext:
             self.standard.append(was_custom_parsed)
 
     def parse_type(self, t: Type) -> Tuple[Type, object, bool]:
-        if isinstance(t, RawExpressionType):
-            do_parse_raw_int = (self.allow_raw_int_types
-                                and t.base_type_name == _get_fqcn(int))
-            do_parse_raw_bool = (self.allow_raw_bool_types
-                                 and t.base_type_name == _get_fqcn(bool))
-
-            if do_parse_raw_int or do_parse_raw_bool:
-                t_raw = t.literal_value
-                t_lit = LiteralType(
-                    value=t_raw,  # type: ignore
-                    fallback=self.at_ctx.api.named_type(t.base_type_name, [])
-                )
-                return t_lit, t_raw, True
-
-            err = PARSE_TYPE_UNEXPECTED_RAW.format(1)
-            if t.base_type_name == _get_fqcn(int):
-                err += PARSE_TYPE_UNEXPECTED_RAW_PRESUME_INT
-            elif t.base_type_name == _get_fqcn(bool):
-                err += PARSE_TYPE_UNEXPECTED_RAW_PRESUME_BOOL
-            logging.warning(err)
-
-        t_parsed = self.at_ctx.api.analyze_type(t)
-
         def strategy(results):
             ret_parsed = []
             ret_raw = []
@@ -142,10 +109,10 @@ class ConstraintContext:
 
             return UnionType(ret_parsed), ret_raw, ret_bool
 
-        visitor = TypeParsingVisitor(strategy)
-        r = t_parsed.accept(visitor)
-        print(r)
-        return r
+        visitor = TypeParsingVisitor(
+            self.at_ctx, self.allow_raw_bool_types, self.allow_raw_int_types, strategy)
+
+        return t.accept(visitor)
 
     def validate_types(self, exp_types: List[object]) -> bool:
         """
@@ -195,7 +162,7 @@ def constraint(obj):
     object.
     """
     def decorate(fn: Callable[[ConstraintContext], Union[bool, Tuple[bool, str]]]):
-        fqcn = _get_fqcn(obj)
+        fqcn = get_fqcn(obj)
 
         def mypy_callback_wrapper(at_ctx: AnalyzeTypeContext) -> Type:
             constraint_ctx = ConstraintContext(at_ctx, obj)

@@ -36,6 +36,11 @@ class Vector(IntTypeArgs, Generic[T, U]):
 def is_valid_vector(ctx: ConstraintContext):
 
     def custom_validator(elem_type, dim):
+        if elem_type not in [int, float]:
+            # This condition is somewhat artificial, this restriction would better be modeled
+            # by giving the vector a Union[int, float] type instead of a generic type variable
+            # for the first type hint argument.
+            return False, f"Only integer or float vectors are accepted, not {elem_type}"
         if dim % 10 == 0:
             return True
         else:

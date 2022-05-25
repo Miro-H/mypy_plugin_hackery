@@ -17,4 +17,4 @@ PARSE_TYPE_UNKNOWN_RAW_TYPE_WARNING = "Could not determine raw type for {0}"
 TESTED_VERSIONS = ["0.950"]
 
 VALIDATE_TYPE_MISSING_RAW = "Could not perform validation because the raw types are missing."
-VISITOR_NOT_IMPLEMENTED = "Functionality not implemented yet."
+VISITOR_NOT_IMPLEMENTED = "Visit function for '{0}' not implemented yet."
