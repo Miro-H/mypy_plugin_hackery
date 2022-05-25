@@ -6,46 +6,46 @@ from PyDSL.InternalUtils import get_fqcn
 
 from .Const import *
 
-from typing import Callable, Dict, List, Union, Tuple
+from typing import Callable, Dict, List, Union, Tuple, get_args
 from mypy.types import AnyType, Type, TypeOfAny, TypeVarType, UnionType
-from mypy.plugin import AnalyzeTypeContext
+from mypy.plugin import AnalyzeTypeContext, AttributeContext
 
 
 class Constraints(object):
     """
     Internal structure storing all registered constraints.
-    Register a new constraint with the decorator @constraint.
+    Register a new constraint with the decorators @*_constraint.
     """
 
     # Singleton pattern
     def __new__(cls):
         if not hasattr(cls, 'instance'):
-            cls._constraints: Dict[str, Callable] = dict()
+            cls._class_constraints: Dict[str, Callable] = dict()
+            cls._attributes_constraints: Dict[str, Callable] = dict()
             cls.instance = super(Constraints, cls).__new__(cls)
         return cls.instance
 
-    def __setitem__(self, key: str, item: Callable):
-        if key in self._constraints:
+    def add_class_constraint(self, key: str, item: Callable) -> None:
+        if key in self._class_constraints:
             logging.warning(CONSTRAINTS_OVERWRITING_WARNING.format(key))
-        self._constraints[key] = item
+        self._class_constraints[key] = item
 
-    def __getitem__(self, key: str) -> Callable:
-        return self._constraints[key]
+    def get_class_constraint(self, key: str) -> Callable:
+        return self._class_constraints[key]
 
-    def __repr__(self) -> str:
-        return repr(self._constraints)
+    def get_class_constraints(self) -> Dict[str, Callable]:
+        return self._class_constraints
 
-    def __len__(self) -> int:
-        return len(self._constraints)
+    def add_attributes_constraint(self, key: str, item: Callable) -> None:
+        if key in self._class_constraints:
+            logging.warning(CONSTRAINTS_OVERWRITING_WARNING.format(key))
+        self._attributes_constraints[key] = item
 
-    def items(self):
-        return self._constraints.items()
+    def get_attributes_constraint(self, key: str) -> Callable:
+        return self._attributes_constraints[key]
 
-    def keys(self):
-        return self._constraints.keys()
-
-    def values(self):
-        return self._constraints.values()
+    def get_attributes_constraints(self) -> Dict[str, Callable]:
+        return self._attributes_constraints
 
 
 class ConstraintContext:
@@ -148,7 +148,23 @@ class ConstraintContext:
         return fn(*self.types_raw)
 
 
-def constraint(obj):
+class AttributeConstraintContext:
+    """
+    This class holds context that is useful to evaluate if an attribute
+    is valid or not.
+
+    Attributes:
+        type : Type; MyPy type of the attribute
+
+        ctx : AttributeContext;    The full context provided by MyPy to
+                                        the attribute analyzing hooks.
+    """
+
+    def __init__(self, ctx: AttributeContext) -> None:
+        self.type = ctx.default_attr_type
+
+
+def class_constraint(obj):
     """
     Decorator to add callable constraint to Constraints and process the
     AnalyzeTypeContext from mypy.plugin to a simpler ConstraintContext
@@ -176,7 +192,57 @@ def constraint(obj):
                 at_ctx.api.fail(err, at_ctx.context)
                 return AnyType(TypeOfAny.from_error)
 
-        Constraints()[fqcn] = mypy_callback_wrapper
+        Constraints().add_class_constraint(fqcn, mypy_callback_wrapper)
+
+        return mypy_callback_wrapper
+
+    return decorate
+
+
+def attribute_constraint(obj, outer_attrs: List[str] = None):
+    """
+    Decorator to add callable attribute constraints to Constraints and process the
+    AnalyzeTypeContext from mypy.plugin to a simpler ConstraintContext
+    object.
+
+    If attributes are specified in attrs, the function only applies to them. By
+    default, it applies to all attributes of the class.
+    """
+
+    def decorate(fn: Callable[[AttributeConstraintContext], Union[bool, Tuple[bool, str]]]):
+        fqcn = get_fqcn(obj)
+
+        # Heuristically add all attributes. Assumes no user attribute starts with two underlines.
+        if not outer_attrs:
+            attrs: List[str] = []
+            if hasattr(obj, "__annotations__"):
+                attrs += obj.__annotations__.keys()
+            if hasattr(obj, "__dict__"):
+                attrs += list(filter(lambda x: not x.startswith("__"),
+                              obj.__dict__.keys()))
+            attrs = list(set(attrs))
+        else:
+            attrs = outer_attrs
+
+        def mypy_callback_wrapper(ctx: AttributeContext) -> Type:
+            attr_ctx = AttributeConstraintContext(ctx)
+            success = fn(attr_ctx)
+
+            err = DEFAULT_ATTRIBUTE_CONSTRAINT_FAILED_ERROR_MSG.format(
+                fqcn, ctx.default_attr_type)
+
+            if isinstance(success, tuple):
+                success, err = success
+
+            if success:
+                return ctx.default_attr_type
+            else:
+                ctx.api.fail(err, ctx.context)
+                return AnyType(TypeOfAny.from_error)
+
+        for a in attrs:
+            Constraints().add_attributes_constraint(
+                f"{fqcn}.{a}", mypy_callback_wrapper)
 
         return mypy_callback_wrapper
 

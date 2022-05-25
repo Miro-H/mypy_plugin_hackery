@@ -1,4 +1,3 @@
-
 from typing import Literal, Dict
 
 from PyDSL_Types import *
@@ -50,3 +49,9 @@ d : Money[EURCoins] = Money(bal2)
 
 # Cannot instantiate money with balance in wrong currency
 # f : Money[EURCoins] = Money(bal1)
+
+#####################################################
+#################### Person Test ####################
+#####################################################
+
+p : Person = Person("Alice", 31, "-", 70000)

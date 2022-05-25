@@ -2,7 +2,7 @@
 from typing import Generic, TypeVar, Dict
 
 from PyDSL.CustomTypes import IntTypeArgs
-from PyDSL.Constraints import ConstraintContext, constraint
+from PyDSL.Constraints import ConstraintContext, class_constraint
 
 V = TypeVar("V")
 
@@ -27,7 +27,7 @@ class Money(IntTypeArgs, Generic[V]):
         r : Money[V] = Money(new_balance)
         return r
 
-@constraint(Money)
+@class_constraint(Money)
 def is_valid_money(ctx: ConstraintContext):
     def limit_valid_currencies(coins):
         for coin in coins:

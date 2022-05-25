@@ -3,7 +3,7 @@ import logging
 from typing import Generic, TypeVar, Literal
 
 from PyDSL.CustomTypes import IntTypeArgs
-from PyDSL.Constraints import ConstraintContext, constraint
+from PyDSL.Constraints import ConstraintContext, class_constraint
 
 T = TypeVar("T")
 U = TypeVar("U")
@@ -32,7 +32,7 @@ class Vector(IntTypeArgs, Generic[T, U]):
         return self.dim
 
 
-@constraint(Vector)
+@class_constraint(Vector)
 def is_valid_vector(ctx: ConstraintContext):
 
     def custom_validator(elem_type, dim):
@@ -48,6 +48,6 @@ def is_valid_vector(ctx: ConstraintContext):
 
     return ctx.validate_types_with_fn(custom_validator)
 
-# @constraint(Vector)
+# @class_constraint(Vector)
 # def is_valid_vector(ctx: ConstraintContext):
 #     return ctx.validate_types([int, 10])

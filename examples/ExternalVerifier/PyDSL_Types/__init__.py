@@ -1,2 +1,3 @@
-from .FancyVectorType import Vector
+from .Vector import Vector
 from .Money import Money
+from .Person import Person

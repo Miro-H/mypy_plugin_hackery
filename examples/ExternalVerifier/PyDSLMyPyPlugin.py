@@ -1,8 +1,8 @@
 
 import logging
 
-from mypy.plugin import Plugin
-from typing import Union
+from mypy.plugin import Plugin, AttributeContext
+from typing import Any, Optional, Callable, Type
 
 from PyDSL.Constraints import Constraints
 from PyDSL.Const import *
@@ -11,11 +11,19 @@ from PyDSL.Const import *
 # types are loaded and added to Constraints() such that they can be verified.
 from PyDSL_Types import *
 
+
 class PyDSLPlugin(Plugin):
     def get_type_analyze_hook(self, fullname: str):
-        for n, cb in Constraints().items():
+        for n, cb in Constraints().get_class_constraints().items():
             if fullname == n:
                 return cb
+
+    def get_attribute_hook(self, fullname: str):
+        for n, cb in Constraints().get_attributes_constraints().items():
+            if fullname == n:
+                return cb
+
+        return None
 
 def plugin(version: str):
     if version not in TESTED_VERSIONS:

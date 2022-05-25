@@ -1,6 +1,7 @@
 CONSTRAINTS_OVERWRITING_WARNING = "Overwriting constraint for '{0}'. Only use a single @constraint decorator."
 
 DEFAULT_CONSTRAINT_FAILED_ERROR_MSG = "Invalid custom type '{0}'{1}"
+DEFAULT_ATTRIBUTE_CONSTRAINT_FAILED_ERROR_MSG = "Invalid attribute of class '{0}' with type '{1}'"
 
 NESTED_UNION_TOO_FEW_ARGUMENTS = "Nested union requires two or more arguments."
 
