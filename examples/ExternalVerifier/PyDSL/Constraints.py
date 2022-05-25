@@ -1,21 +1,14 @@
-import builtins
 import logging
 
-from PyDSL.CustomTypes import IntTypeArgs, BoolTypeArgs, Raw
+from PyDSL.CustomTypes import IntTypeArgs, BoolTypeArgs
 from PyDSL.TypeParsingVIsitor import TypeParsingVisitor
 from PyDSL.InternalUtils import get_fqcn
 
 from .Const import *
 
-from typing import Callable, Dict, Final, List, Union, Tuple, TypeVar
-from mypy.types import (
-    AnyType, CallableType, Instance, LiteralType, PartialType, RawExpressionType,
-    RequiredType, Type, TypeAliasType, TypeOfAny, TypeVarType, UnionType
-)
+from typing import Callable, Dict, List, Union, Tuple
+from mypy.types import AnyType, Type, TypeOfAny, TypeVarType, UnionType
 from mypy.plugin import AnalyzeTypeContext
-
-NESTED_TYPES: Final = [CallableType, PartialType,
-                       RequiredType, TypeAliasType, UnionType]
 
 
 class Constraints(object):
@@ -86,7 +79,7 @@ class ConstraintContext:
         self.allow_raw_bool_types = BoolTypeArgs in obj.mro()
 
         # Analyze types of arguments and convert builtin.{int,bool} literals `a`
-        # to `Literal[a]` is custom literal parsing is active.
+        # to `Literal[a]` if custom literal parsing is active.
         self.types = []
         self.types_raw = []
         self.standard = []
