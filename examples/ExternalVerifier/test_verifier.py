@@ -55,3 +55,7 @@ d : Money[EURCoins] = Money(bal2)
 #####################################################
 
 p : Person = Person("Alice", 31, "-", 70000)
+print(p.age)
+
+# Throws error because secret attribute is accessed
+# print(p.health_record)

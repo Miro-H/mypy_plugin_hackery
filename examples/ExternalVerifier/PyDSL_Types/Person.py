@@ -1,6 +1,7 @@
 from PyDSL.HecoTypes import Secret
-from PyDSL.Constraints import AttributeConstraintContext, attribute_constraint, class_constraint, ConstraintContext
+from PyDSL.Constraints import AttributeConstraintContext, attribute_constraint
 from PyDSL.InternalUtils import get_fqcn
+from PyDSL.TypeFinderVisitor import TypeFinderVisitor
 
 class Person:
     name: str
@@ -12,16 +13,19 @@ class Person:
     def __init__(self, name, age, health_record, salary) -> None:
         self.name = name
         self.age = age
-        self.health_record = health_record
-        self.salary = salary
+        # False positives, didn't found a way to allow class internal access to secret values
+        self.health_record = health_record # type: ignore
+        self.salary = salary # type: ignore
 
     def get_name(self) -> str:
         return self.name
 
-    def leak(self) -> Secret[int]:
-        return self.salary
+    # Marked as error because it accesses a secret variable
+    # def leak(self) -> Secret[int]:
+    #     return self.salary
 
 @attribute_constraint(Person)
 def is_valid_person_attribute(ctx: AttributeConstraintContext):
-    # TODO: should write visitor to check for secret values in nested expressions
-    return get_fqcn(Secret) != ctx.type.type.fullname # type: ignore
+    v = TypeFinderVisitor(Secret)
+    has_secret = ctx.type.accept(v)
+    return not has_secret
