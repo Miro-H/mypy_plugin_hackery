@@ -1,15 +1,15 @@
 import logging
 
-from typing import Generic, TypeVar, Literal
+from typing import Generic, TypeVar
 
-from PyDSL.CustomTypes import IntTypeArgs
+from PyDSL.CustomTypes import IntKind, custom_types
 from PyDSL.Constraints import ConstraintContext, class_constraint
 
-T = TypeVar("T")
+T = TypeVar("T", bound=IntKind)
 U = TypeVar("U")
 
-
-class Vector(IntTypeArgs, Generic[T, U]):
+@custom_types
+class Vector(Generic[T, U]):
     def __init__(self, l):
         self.dim = len(l)
         self.l = l
@@ -36,11 +36,6 @@ class Vector(IntTypeArgs, Generic[T, U]):
 def is_valid_vector(ctx: ConstraintContext):
 
     def custom_validator(elem_type, dim):
-        if elem_type not in [int, float]:
-            # This condition is somewhat artificial, this restriction would better be modeled
-            # by giving the vector a Union[int, float] type instead of a generic type variable
-            # for the first type hint argument.
-            return False, f"Only integer or float vectors are accepted, not {elem_type}"
         if dim % 10 == 0:
             return True
         else:

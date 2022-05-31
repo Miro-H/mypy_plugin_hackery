@@ -1,7 +1,9 @@
 CONSTRAINTS_OVERWRITING_WARNING = "Overwriting constraint for '{0}'. Only use a single @constraint decorator."
 
-DEFAULT_CONSTRAINT_FAILED_ERROR_MSG = "Invalid custom type '{0}'{1}"
-DEFAULT_ATTRIBUTE_CONSTRAINT_FAILED_ERROR_MSG = "Invalid attribute of class '{0}' with type '{1}'"
+CONSTRAINT_DEFAULT_FAILED_ERROR_MSG = "Invalid custom type '{0}'{1}"
+CONSTRAINT_CUSTOM_FN_FAILED_MSG = "Custom constraint function for type '{0}' failed with error:\n{1}\nThis may happen because the type is instantiated with invalid types, which are only validated after the constraint is checked.\n\nFull trace:\n{2}"
+
+ATTRIBUTE_CONSTRAINT_DEFAULT_FAILED_ERROR_MSG = "Invalid attribute of class '{0}' with type '{1}'"
 
 NESTED_UNION_TOO_FEW_ARGUMENTS = "Nested union requires two or more arguments."
 

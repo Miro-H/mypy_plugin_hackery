@@ -1,12 +1,11 @@
 
 from typing import Generic, TypeVar, Dict
 
-from PyDSL.CustomTypes import IntTypeArgs
 from PyDSL.Constraints import ConstraintContext, class_constraint
 
 V = TypeVar("V")
 
-class Money(IntTypeArgs, Generic[V]):
+class Money(Generic[V]): # TODO: fix to allow int type args
     def __init__(self, balance : Dict[V, int]) -> None:
         self.balance = balance
 

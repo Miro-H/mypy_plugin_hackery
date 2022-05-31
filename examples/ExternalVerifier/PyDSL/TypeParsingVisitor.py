@@ -2,7 +2,6 @@ import logging
 import builtins
 
 from typing import Tuple, Callable
-from mypy.type_visitor import TypeQuery
 from mypy.types import *
 from mypy.plugin import AnalyzeTypeContext
 
@@ -32,7 +31,12 @@ class TypeParsingVisitor(TypeQuery[RetType]):
 
     def visit_unbound_type(self, t: UnboundType) -> RetType:
         t_analyzed = self.at_ctx.api.analyze_type(t)
-        return t_analyzed.accept(self)
+
+        # Avoid infinite recursion by leaving unbounded variables unbounded if they cannot
+        # be further resolved.
+        if type(t_analyzed) != UnboundType:
+            return t_analyzed.accept(self)
+        return t, t, False
 
     def visit_any(self, t: AnyType) -> RetType:
         logging.error(VISITOR_NOT_IMPLEMENTED.format(AnyType))
@@ -70,7 +74,13 @@ class TypeParsingVisitor(TypeQuery[RetType]):
         if t.type.name in dir(builtins):
             return t, eval(t.type.name), False
 
-        return self.query_types(t.args)
+        args_union, args_raw, custom_parsed = self.query_types(t.args)
+        args_list: List[Type] = list(args_union.items) # type: ignore
+        if len(args_list) > 0:
+            inst_type = self.at_ctx.api.named_type(get_fqcn(t), args_list)
+        else:
+            inst_type = t #self.at_ctx.api.named_type(get_fqcn(t), None)
+        return inst_type, args_raw, custom_parsed
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> RetType:
         t_raw = t.literal_value

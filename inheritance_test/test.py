@@ -14,5 +14,7 @@ class C(A, B):
 class D(B, A):
     pass
 
+print(C.__mro__)
+print(D.__mro__)
 assert C().fn() == "A"
 assert D().fn() == "B"

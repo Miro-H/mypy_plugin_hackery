@@ -1,7 +1,8 @@
 import logging
+import traceback
 
-from PyDSL.CustomTypes import IntTypeArgs, BoolTypeArgs
-from PyDSL.TypeParsingVIsitor import TypeParsingVisitor
+from PyDSL.CustomTypes import has_custom_bound
+from PyDSL.TypeParsingVisitor import TypeParsingVisitor
 from PyDSL.InternalUtils import get_fqcn
 
 from .Const import *
@@ -74,9 +75,12 @@ class ConstraintContext:
 
         # If the class inherits from IntTypeArgs and/or BoolTypeArgs, activate
         # custom literal parsing.
-        mro = obj.mro()
-        self.allow_raw_int_types = IntTypeArgs in obj.mro()
-        self.allow_raw_bool_types = BoolTypeArgs in obj.mro()
+        print(obj.__parameters__)
+
+        self.allow_custom_syntax = has_custom_bound(obj.__parameters__)
+        print(self.allow_custom_syntax)
+        self.allow_raw_int_types = True # TODO: fix
+        self.allow_raw_bool_types = True # TODO: fix
 
         # Analyze types of arguments and convert builtin.{int,bool} literals `a`
         # to `Literal[a]` if custom literal parsing is active.
@@ -141,6 +145,7 @@ class ConstraintContext:
         if allow_type_vars and all([isinstance(t, TypeVarType) for t in self.types]):
             return True
 
+        # Catch missing raw types
         if any([type_raw == None for type_raw in self.types_raw]):
             logging.error(VALIDATE_TYPE_MISSING_RAW)
             return False
@@ -176,12 +181,18 @@ def class_constraint(obj):
         def mypy_callback_wrapper(at_ctx: AnalyzeTypeContext) -> Type:
             constraint_ctx = ConstraintContext(at_ctx, obj)
 
-            success = fn(constraint_ctx)
+            try:
+                success = fn(constraint_ctx)
+            except Exception as e:
+                err = CONSTRAINT_CUSTOM_FN_FAILED_MSG.format(fqcn, repr(e), traceback.format_exc())
+                at_ctx.api.fail(err, at_ctx.context)
+                return AnyType(TypeOfAny.from_error)
+
             type_args = constraint_ctx.types
             if not isinstance(type_args, list):
                 type_args = list(type_args)
 
-            err = DEFAULT_CONSTRAINT_FAILED_ERROR_MSG.format(fqcn, type_args)
+            err = CONSTRAINT_DEFAULT_FAILED_ERROR_MSG.format(fqcn, type_args)
 
             if isinstance(success, tuple):
                 success, err = success
@@ -228,7 +239,7 @@ def attribute_constraint(obj, outer_attrs: List[str] = None):
             attr_ctx = AttributeConstraintContext(ctx)
             success = fn(attr_ctx)
 
-            err = DEFAULT_ATTRIBUTE_CONSTRAINT_FAILED_ERROR_MSG.format(
+            err = ATTRIBUTE_CONSTRAINT_DEFAULT_FAILED_ERROR_MSG.format(
                 fqcn, ctx.default_attr_type)
 
             if isinstance(success, tuple):
