@@ -2,11 +2,13 @@ import logging
 
 from typing import Generic, TypeVar
 
-from PyDSL.CustomTypes import IntKind, custom_types
+from PyDSL.CustomTypes import IntKind, RawInt, custom_types
 from PyDSL.Constraints import ConstraintContext, class_constraint
 
+from mypy.types import LiteralType
+
 T = TypeVar("T", bound=IntKind)
-U = TypeVar("U")
+U = TypeVar("U", bound=RawInt)
 
 @custom_types
 class Vector(Generic[T, U]):

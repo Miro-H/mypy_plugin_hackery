@@ -1,14 +1,14 @@
 import logging
 import traceback
+from PyDSL.CustomTypes import rewrite_literals, RawInt
 
-from PyDSL.CustomTypes import has_custom_bound
 from PyDSL.TypeParsingVisitor import TypeParsingVisitor
 from PyDSL.InternalUtils import get_fqcn
 
 from .Const import *
 
-from typing import Callable, Dict, List, Union, Tuple, get_args
-from mypy.types import AnyType, Type, TypeOfAny, TypeVarType, UnionType
+from typing import Callable, Dict, List, Union, Tuple, Optional, Final
+from mypy.types import AnyType, Type, TypeOfAny, TypeVarType, UnionType, RawExpressionType, LiteralType, NoneType
 from mypy.plugin import AnalyzeTypeContext, AttributeContext
 
 
@@ -73,27 +73,41 @@ class ConstraintContext:
     def __init__(self, at_ctx: AnalyzeTypeContext, obj) -> None:
         self.at_ctx = at_ctx
 
-        # If the class inherits from IntTypeArgs and/or BoolTypeArgs, activate
-        # custom literal parsing.
-        print(obj.__parameters__)
-
-        self.allow_custom_syntax = has_custom_bound(obj.__parameters__)
-        print(self.allow_custom_syntax)
-        self.allow_raw_int_types = True # TODO: fix
-        self.allow_raw_bool_types = True # TODO: fix
-
         # Analyze types of arguments and convert builtin.{int,bool} literals `a`
         # to `Literal[a]` if custom literal parsing is active.
         self.types = []
         self.types_raw = []
         self.standard = []
-        for arg in at_ctx.type.args:
+
+        def make_instance(e):
+            if isinstance(e, int):
+                return at_ctx.api.named_type(get_fqcn(int), [])
+
+        def make_literal_type(e: RawExpressionType):
+            val = e.literal_value
+            if val:
+                return LiteralType(
+                    value=val,
+                    fallback=make_instance(val)
+                )
+            else:
+                return NoneType()
+
+        STATIC_TYPE_CONVERSION: Final = {
+            RawInt.__name__: make_literal_type
+        }
+
+        args = rewrite_literals(obj, STATIC_TYPE_CONVERSION, at_ctx.type.args)
+        print("before", at_ctx.type.args)
+        print("after", args)
+
+        for arg in args:
             t_parsed, t_raw, was_custom_parsed = self.parse_type(arg)
             self.types.append(t_parsed)
             self.types_raw.append(t_raw)
             self.standard.append(was_custom_parsed)
-
-    def parse_type(self, t: Type) -> Tuple[Type, object, bool]:
+        
+    def parse_type(self, t: Type) -> Tuple[Type, Optional[list], bool]:
         def strategy(results):
             ret_parsed = []
             ret_raw = []
@@ -104,11 +118,13 @@ class ConstraintContext:
                 ret_raw.append(raw)
                 ret_bool |= custom_bool
 
-            return UnionType(ret_parsed), ret_raw, ret_bool
+            if len(ret_parsed) > 1:
+                ret_parsed = UnionType(ret_parsed)
 
-        visitor = TypeParsingVisitor(
-            self.at_ctx, self.allow_raw_bool_types, self.allow_raw_int_types, strategy)
+            return ret_parsed, ret_raw, ret_bool
 
+        visitor = TypeParsingVisitor(self.at_ctx, strategy)
+        print("apply visitor for", t)
         return t.accept(visitor)
 
     def validate_types(self, exp_types: List[object]) -> bool:
@@ -150,7 +166,16 @@ class ConstraintContext:
             logging.error(VALIDATE_TYPE_MISSING_RAW)
             return False
 
-        return fn(*self.types_raw)
+        # Unpack single arguments
+        types_raw_unpacked = []
+        for type_raw in self.types_raw:
+            if isinstance(type_raw, list) and len(type_raw) == 1:
+                types_raw_unpacked.append(type_raw[0])
+            else:
+                types_raw_unpacked.append(type_raw)
+        print("unpacked", types_raw_unpacked, "packed", self.types_raw)
+
+        return fn(*types_raw_unpacked)
 
 
 class AttributeConstraintContext:
@@ -184,7 +209,8 @@ def class_constraint(obj):
             try:
                 success = fn(constraint_ctx)
             except Exception as e:
-                err = CONSTRAINT_CUSTOM_FN_FAILED_MSG.format(fqcn, repr(e), traceback.format_exc())
+                err = CONSTRAINT_CUSTOM_FN_FAILED_MSG.format(
+                    fqcn, repr(e), traceback.format_exc())
                 at_ctx.api.fail(err, at_ctx.context)
                 return AnyType(TypeOfAny.from_error)
 

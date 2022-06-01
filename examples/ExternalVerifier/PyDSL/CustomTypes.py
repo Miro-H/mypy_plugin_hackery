@@ -1,32 +1,72 @@
+from types import FunctionType
 from .Const import *
-from typing import Iterator, Literal, Union, TypeVar, List
+from typing import Final, Generic, Literal, NewType, TypeVar, Union
+from mypy.types import UnboundType, LiteralType, RawExpressionType, NoneType
+
+def make_literal(e):
+    return Literal[e] # type: ignore
+
+# def make_literal_type(e: RawExpressionType):
+#     val = e.literal_value
+#     if val:
+#         return LiteralType(
+#             value=val, 
+#             fallback=make_instance(val)
+#         )
+#     else:
+#         return NoneType()
+
+RawInt = NewType("RawInt", int)
+
+RUNTIME_TYPE_CONVERSION: Final = {
+    RawInt.__name__: make_literal
+}
+
+# STATIC_TYPE_CONVERSION: Final = {
+#     RawInt.__name__: make_literal_type
+# }
+
+def do_raw_conversion(name, conversion, raw_val):
+    return conversion[name](raw_val)
+
+def rewrite_literals(class_obj, conversion, args):
+    """
+    Allow custom parsing for custom types.
+    """
+
+    type_vars = class_obj.__parameters__
+    orig_params_type = type(args)
+    args = list(args)
+    if isinstance(type_vars, tuple):
+        for i, t in enumerate(type_vars):
+            arg = args[i]
+            print(i, t, arg, type(arg), isinstance(arg, TypeVar))
+            if issubclass(type(t), TypeVar) and not isinstance(arg, UnboundType):
+                b = t.__bound__
+                if b and isinstance(b, FunctionType):
+                    print("DO CONVERSION")
+                    args[i] = do_raw_conversion(b.__name__, conversion, arg)
+
+    return orig_params_type(args)
 
 
-def _recursive_rewrite_literals(params, type_to_rewrite):
-    # TODO: Do nothing to other type except literals, but only the corresponding type variable is of the kind that allows raw integers.
-    if hasattr(params, "__iter__"):
-        orig_type = type(params)
-        params = list(params)
-        for i, param in enumerate(params):
-            params[i] = _recursive_rewrite_literals(param, type_to_rewrite)
-        params = orig_type(params)
-    elif isinstance(params, type_to_rewrite):
-        params = Literal[params]  # type: ignore
+def rewrite_literal(class_obj, conversion, arg):
+    if not isinstance(arg, tuple):
+        arg = (arg,)
+    r = rewrite_literals(class_obj, conversion, arg)
+    return r[0]
 
-    return params
 
-# TODO: continue
-def has_custom_bound(param: Union[TypeVar, List[TypeVar]],
-                     aggregate: bool = False) -> Union[bool, List[bool]]:
-
+def has_custom_bound(param, aggregate=False):
     if hasattr(param, "__iter__"):
-        response_rec = map(lambda x: has_custom_bound(
-            x, aggregate=True), param)
+        response_rec = map(lambda x: has_custom_bound(x, True), param)
+
         if aggregate:
             return any(response_rec)
+
         return list(response_rec)
-    
-    return param.__bound__ != None and issubclass(param.__bound__, CustomTypes) # type: ignore
+
+    return param.__bound__ != None and issubclass(param.__bound__, CustomTypes)
 
 
 def custom_types(decorated_class):
@@ -37,9 +77,9 @@ def custom_types(decorated_class):
     decorated_class_getitem = decorated_class.__class_getitem__
 
     def __class_getitem__(params):  # cls is implicit
-        # TODO
-        print(decorated_class.__parameters__)
-        params = _recursive_rewrite_literals(params, int)
+        print("class_getitem before rewrite", params)
+        params = rewrite_literals(decorated_class, RUNTIME_TYPE_CONVERSION, params)
+        print("class_getitem after rewrite", params)
         return decorated_class_getitem(params=params)
 
     decorated_class.__class_getitem__ = __class_getitem__
@@ -53,21 +93,25 @@ class CustomTypes:
 class IntKind(CustomTypes):
     l: int
 
-    def __init__(self, d: int) -> None:
-        self.d = d
+
+L = TypeVar("L", bound=int)
 
 
-class Int8(IntKind):
+@custom_types
+class Int8(IntKind, Generic[L]):
     l = 8
 
 
-class Int16(IntKind):
+@custom_types
+class Int16(IntKind, Generic[L]):
     l = 16
 
 
-class Int32(IntKind):
+@custom_types
+class Int32(IntKind, Generic[L]):
     l = 32
 
 
-class Int64(IntKind):
+@custom_types
+class Int64(IntKind, Generic[L]):
     l = 64
