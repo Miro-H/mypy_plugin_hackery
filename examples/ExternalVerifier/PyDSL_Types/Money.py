@@ -29,6 +29,7 @@ class Money(Generic[V]): # TODO: fix to allow int type args
 @class_constraint(Money)
 def is_valid_money(ctx: ConstraintContext):
     def limit_valid_currencies(coins):
+        print(coins)
         for coin in coins:
             if coin > 10 and coin % 5 != 0:
                 return False, "Coin denominations above 10 must be multiples of 5."

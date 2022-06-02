@@ -7,36 +7,35 @@ from PyDSL_Types import *
 ##################### Vector Test #####################
 #######################################################
 
-x: Vector[Int32, 20]
-# x: Vector[Int32, 20] = Vector(list(range(1, 21)))
-# y: Vector[Int32, 20] = Vector([1] * 20)
+x: Vector[Int32, 20] = Vector(list(range(1, 21)))
+y: Vector[Int32, 20] = Vector([1] * 20)
 
-# # # Allowed
-# print("Resulting vector: ", x + y)
+# Allowed
+print("Resulting vector: ", x + y)
 
-# # Error (invalid vectors)
-# # u : Vector[float, 10] = Vector(list(range(1,7)))
-# # w : Vector[10, Int32] = Vector(list(range(1,7)))
+# Error (invalid vectors)
+# u : Vector[float, 10]
+# w : Vector[10, Int32]
 
-# # Error (vectors of different dimensions!)
-# # z1: Vector[Int32, 10] = Vector([1] * 6)
-# # print("Resulting vector: ", x + z1)
-# # z2: Vector[Int16, 20] = Vector([1] * 6)
-# # print("Resulting vector: ", x + z2)
+# Error (vectors of different dimensions!)
+# z1: Vector[Int32, 10] = Vector([1] * 6)
+# print("Resulting vector: ", x + z1)
+# z2: Vector[Int16, 20] = Vector([1] * 6)
+# print("Resulting vector: ", x + z2)
 
 
-# ######################################################
-# ##################### Money Test #####################
-# ######################################################
+######################################################
+##################### Money Test #####################
+######################################################
 
-# CHFCoins = Literal[5, 10, 20, 50, 100, 500]
-# bal1: Dict[CHFCoins, int] = {5: 0, 10: 3, 20: 2, 50: 4, 100: 7, 500: 1}
+CHFCoins = Literal[5, 10, 20, 50, 100, 500]
+bal1: Dict[CHFCoins, int] = {5: 0, 10: 3, 20: 2, 50: 4, 100: 7, 500: 1}
 
-# # `Literal[5, 10, ...]` is the abbreviated syntax for
-# # `Union[Literal[5], Literal[10], ...]`
-# a: Money[CHFCoins] = Money(bal1)
-# a.store(5, 1)
-# a.take(10, 2)
+# `Literal[5, 10, ...]` is the abbreviated syntax for
+# `Union[Literal[5], Literal[10], ...]`
+a: Money[CHFCoins] = Money(bal1)
+a.store(5, 1)
+a.take(10, 2)
 
 # b: Money[CHFCoins] = Money(bal1)
 # c = a + b

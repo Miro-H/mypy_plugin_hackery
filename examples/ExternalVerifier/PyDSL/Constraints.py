@@ -1,6 +1,6 @@
 import logging
 import traceback
-from PyDSL.CustomTypes import rewrite_literals, RawInt
+from PyDSL.CustomTypes import rewrite_literals
 
 from PyDSL.TypeParsingVisitor import TypeParsingVisitor
 from PyDSL.InternalUtils import get_fqcn
@@ -77,54 +77,38 @@ class ConstraintContext:
         # to `Literal[a]` if custom literal parsing is active.
         self.types = []
         self.types_raw = []
-        self.standard = []
-
-        def make_instance(e):
-            if isinstance(e, int):
-                return at_ctx.api.named_type(get_fqcn(int), [])
 
         def make_literal_type(e: RawExpressionType):
             val = e.literal_value
             if val:
                 return LiteralType(
                     value=val,
-                    fallback=make_instance(val)
+                    fallback=at_ctx.api.named_type(e.base_type_name, [])
                 )
             else:
                 return NoneType()
 
-        STATIC_TYPE_CONVERSION: Final = {
-            RawInt.__name__: make_literal_type
-        }
-
-        args = rewrite_literals(obj, STATIC_TYPE_CONVERSION, at_ctx.type.args)
-        print("before", at_ctx.type.args)
-        print("after", args)
-
+        args = rewrite_literals(obj, make_literal_type, at_ctx.type.args)
         for arg in args:
-            t_parsed, t_raw, was_custom_parsed = self.parse_type(arg)
+            t_parsed, t_raw = self.parse_type(arg)
             self.types.append(t_parsed)
             self.types_raw.append(t_raw)
-            self.standard.append(was_custom_parsed)
         
-    def parse_type(self, t: Type) -> Tuple[Type, Optional[list], bool]:
+    def parse_type(self, t: Type) -> Tuple[Type, Optional[list]]:
         def strategy(results):
             ret_parsed = []
             ret_raw = []
-            ret_bool = False
 
-            for parsed, raw, custom_bool in results:
+            for parsed, raw in results:
                 ret_parsed.append(parsed)
                 ret_raw.append(raw)
-                ret_bool |= custom_bool
 
             if len(ret_parsed) > 1:
                 ret_parsed = UnionType(ret_parsed)
 
-            return ret_parsed, ret_raw, ret_bool
+            return ret_parsed, ret_raw
 
         visitor = TypeParsingVisitor(self.at_ctx, strategy)
-        print("apply visitor for", t)
         return t.accept(visitor)
 
     def validate_types(self, exp_types: List[object]) -> bool:
@@ -173,7 +157,6 @@ class ConstraintContext:
                 types_raw_unpacked.append(type_raw[0])
             else:
                 types_raw_unpacked.append(type_raw)
-        print("unpacked", types_raw_unpacked, "packed", self.types_raw)
 
         return fn(*types_raw_unpacked)
 
@@ -206,19 +189,18 @@ def class_constraint(obj):
         def mypy_callback_wrapper(at_ctx: AnalyzeTypeContext) -> Type:
             constraint_ctx = ConstraintContext(at_ctx, obj)
 
-            try:
-                success = fn(constraint_ctx)
-            except Exception as e:
-                err = CONSTRAINT_CUSTOM_FN_FAILED_MSG.format(
-                    fqcn, repr(e), traceback.format_exc())
-                at_ctx.api.fail(err, at_ctx.context)
-                return AnyType(TypeOfAny.from_error)
-
             type_args = constraint_ctx.types
             if not isinstance(type_args, list):
                 type_args = list(type_args)
-
             err = CONSTRAINT_DEFAULT_FAILED_ERROR_MSG.format(fqcn, type_args)
+
+            try:
+                success = fn(constraint_ctx)
+            except Exception as e:
+                logging.error(CONSTRAINT_CUSTOM_FN_FAILED_MSG.format(
+                    fqcn, repr(e), traceback.format_exc()))
+                err = CONSTRAINT_CUSTOM_FN_FAILED_SHORT_MSG.format(fqcn)
+                success = False
 
             if isinstance(success, tuple):
                 success, err = success

@@ -1,10 +1,11 @@
-from types import FunctionType
 from .Const import *
-from typing import Final, Generic, Literal, NewType, TypeVar, Union
-from mypy.types import UnboundType, LiteralType, RawExpressionType, NoneType
+from typing import Generic, Literal, NewType, TypeVar
+from mypy.types import UnboundType
 
 def make_literal(e):
     return Literal[e] # type: ignore
+
+RUNTIME_CONVERSION = make_literal
 
 # def make_literal_type(e: RawExpressionType):
 #     val = e.literal_value
@@ -16,11 +17,11 @@ def make_literal(e):
 #     else:
 #         return NoneType()
 
-RawInt = NewType("RawInt", int)
+# RawInt = NewType("RawInt", int)
 
-RUNTIME_TYPE_CONVERSION: Final = {
-    RawInt.__name__: make_literal
-}
+# RUNTIME_TYPE_CONVERSION: Final = {
+#     RawInt.__name__: make_literal
+# }
 
 # STATIC_TYPE_CONVERSION: Final = {
 #     RawInt.__name__: make_literal_type
@@ -40,12 +41,16 @@ def rewrite_literals(class_obj, conversion, args):
     if isinstance(type_vars, tuple):
         for i, t in enumerate(type_vars):
             arg = args[i]
-            print(i, t, arg, type(arg), isinstance(arg, TypeVar))
             if issubclass(type(t), TypeVar) and not isinstance(arg, UnboundType):
                 b = t.__bound__
-                if b and isinstance(b, FunctionType):
-                    print("DO CONVERSION")
-                    args[i] = do_raw_conversion(b.__name__, conversion, arg)
+                # TODO: done for all literals now, how can we achieve only doing this for custom values?
+                # n=NewType(...) + VarType(..., bound=n) failed because the translated type is not a subtype of
+                # n anymore... And creating types of n during analysis doesn't work :(
+                
+                # OLD code:
+                # if b and isinstance(b, FunctionType):
+                #   args[i] = do_raw_conversion(b.__name__, conversion, arg)
+                args[i] = conversion(arg)
 
     return orig_params_type(args)
 
@@ -78,7 +83,7 @@ def custom_types(decorated_class):
 
     def __class_getitem__(params):  # cls is implicit
         print("class_getitem before rewrite", params)
-        params = rewrite_literals(decorated_class, RUNTIME_TYPE_CONVERSION, params)
+        params = rewrite_literals(decorated_class, RUNTIME_CONVERSION, params)
         print("class_getitem after rewrite", params)
         return decorated_class_getitem(params=params)
 

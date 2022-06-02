@@ -2,6 +2,7 @@ CONSTRAINTS_OVERWRITING_WARNING = "Overwriting constraint for '{0}'. Only use a 
 
 CONSTRAINT_DEFAULT_FAILED_ERROR_MSG = "Invalid custom type '{0}'{1}"
 CONSTRAINT_CUSTOM_FN_FAILED_MSG = "Custom constraint function for type '{0}' failed with error:\n{1}\nThis may happen because the type is instantiated with invalid types, which are only validated after the constraint is checked.\n\nFull trace:\n{2}"
+CONSTRAINT_CUSTOM_FN_FAILED_SHORT_MSG = "Custom constraint function for type '{0}' threw exception."
 
 ATTRIBUTE_CONSTRAINT_DEFAULT_FAILED_ERROR_MSG = "Invalid attribute of class '{0}' with type '{1}'"
 
@@ -10,10 +11,6 @@ NESTED_UNION_TOO_FEW_ARGUMENTS = "Nested union requires two or more arguments."
 PLUGIN_VERSION_WARNING = "The custom PyDSLPlugin for MyPy was not tested with your MyPy version {0}."
 
 PARSE_TYPE_UNEXPECTED_RAW = "Encountered unexpected raw type {0}"
-PARSE_TYPE_UNEXPECTED_RAW_PRESUME_INT = "; for enabling non-standard raw integer type arguments, " + \
-    "inherit from `IntTypeArgs`."
-PARSE_TYPE_UNEXPECTED_RAW_PRESUME_BOOL = "; for enabling non-standard raw Boolean type arguments, " + \
-    "inherit from `IntTypeArgs`."
 PARSE_TYPE_UNKNOWN_RAW_TYPE_WARNING = "Could not determine raw type for {0}"
 
 TESTED_VERSIONS = ["0.950"]
