@@ -37,30 +37,30 @@ a: Money[CHFCoins] = Money(bal1)
 a.store(5, 1)
 a.take(10, 2)
 
-# b: Money[CHFCoins] = Money(bal1)
-# c = a + b
+b: Money[CHFCoins] = Money(bal1)
+c = a + b
 
-# # Invalid Literal[1] -> there is no coin 1 in this currency
-# # a.store(1, 1)
+# Invalid Literal[1] -> there is no coin 1 in this currency
+# a.store(1, 1)
 
-# EURCoins = Literal[1, 2, 5, 10, 20, 50, 100, 200]
-# bal2: Dict[EURCoins, int] = {1: 10, 2: 5,
-#                              5: 10, 10: 1, 20: 2, 50: 2, 100: 3, 200: 0}
+EURCoins = Literal[1, 2, 5, 10, 20, 50, 100, 200]
+bal2: Dict[EURCoins, int] = {1: 10, 2: 5,
+                             5: 10, 10: 1, 20: 2, 50: 2, 100: 3, 200: 0}
 
-# d: Money[EURCoins] = Money(bal2)
+d: Money[EURCoins] = Money(bal2)
 
-# # Cannot add different currencies
-# # e = a + d
+# Cannot add different currencies
+# e = a + d
 
-# # Cannot instantiate money with balance in wrong currency
-# # f : Money[EURCoins] = Money(bal1)
+# Cannot instantiate money with balance in wrong currency
+# f : Money[EURCoins] = Money(bal1)
 
 # #####################################################
 # #################### Person Test ####################
 # #####################################################
 
-# p: Person = Person("Alice", 31, "-", 70000)
-# print(p.age)
+p: Person = Person("Alice", 31, "-", 70000)
+print(p.age)
 
-# # Throws error because secret attribute is accessed
-# # print(p.health_record)
+# Throws error because secret attribute is accessed
+# print(p.health_record)

@@ -101,7 +101,7 @@ class ConstraintContext:
 
             for parsed, raw in results:
                 ret_parsed.append(parsed)
-                ret_raw.append(raw)
+                ret_raw += raw
 
             if len(ret_parsed) > 1:
                 ret_parsed = UnionType(ret_parsed)

@@ -42,7 +42,7 @@ class TypeParsingVisitor(TypeQuery[RetType]):
 
     def visit_any(self, t: AnyType) -> RetType:
         return t, None
-
+        
     def visit_uninhabited_type(self, t: UninhabitedType) -> RetType:
         logging.error(VISITOR_NOT_IMPLEMENTED.format(UninhabitedType))
         return AnyType(TypeOfAny.from_error), None
@@ -73,19 +73,9 @@ class TypeParsingVisitor(TypeQuery[RetType]):
 
     def visit_instance(self, t: Instance) -> RetType:
         if t.type.name in dir(builtins):
-            return t, eval(t.type.name)
+            return t, [eval(t.type.name)]
 
         args_list, args_raw = self.query_types(t.args)
-        print("got args_list", args_list, args_raw)
-
-        # Unwarp query_types response
-        if isinstance(args_raw, list) and isinstance(args_list, list):
-            if len(args_list) > 1 or len(args_list) != len(args_raw):
-                logging.error(VISITOR_INSTANCE_UNEXPECTED_ARGS_NR.format(args_list))
-            elif len(args_list) == 1:
-                args_raw = args_raw[0]
-        else:
-            logging.error(VISITOR_INSTANCE_EXPECTED_LIST.format(args_list, args_raw))
 
         if hasattr(args_list, "__iter__"):
             args_tpl = tuple(args_list) # type: ignore
@@ -105,7 +95,7 @@ class TypeParsingVisitor(TypeQuery[RetType]):
         return t, [t_raw]
 
     def visit_literal_type(self, t: LiteralType) -> RetType:
-        return t, t.value
+        return t, [t.value]
 
     def visit_ellipsis_type(self, t: EllipsisType) -> RetType:
         logging.error(VISITOR_NOT_IMPLEMENTED.format(EllipsisType))
