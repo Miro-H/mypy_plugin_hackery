@@ -1,34 +1,33 @@
 from .Const import *
-from typing import Generic, Literal, NewType, TypeVar
+from typing import Annotated, Final, Generic, Literal, NewType, Type, TypeVar
 from mypy.types import UnboundType
 
+
 def make_literal(e):
-    return Literal[e] # type: ignore
+    return Literal[e]  # type: ignore
+
 
 RUNTIME_CONVERSION = make_literal
+ANNOTATED_TYPE: Final = type(Annotated[int, ""])
 
-# def make_literal_type(e: RawExpressionType):
-#     val = e.literal_value
-#     if val:
-#         return LiteralType(
-#             value=val, 
-#             fallback=make_instance(val)
-#         )
-#     else:
-#         return NoneType()
 
-# RawInt = NewType("RawInt", int)
+class ConvertRawLiterals:
+    pass
 
-# RUNTIME_TYPE_CONVERSION: Final = {
-#     RawInt.__name__: make_literal
-# }
 
-# STATIC_TYPE_CONVERSION: Final = {
-#     RawInt.__name__: make_literal_type
-# }
+def is_raw_type(t: Type) -> bool:
+    if not isinstance(t, ANNOTATED_TYPE) or not hasattr(t, "__metadata__"):
+        return False
+
+    if ConvertRawLiterals in t.__metadata__:  # type: ignore
+        return True
+
+    return False
+
 
 def do_raw_conversion(name, conversion, raw_val):
     return conversion[name](raw_val)
+
 
 def rewrite_literals(class_obj, conversion, args):
     """
@@ -43,14 +42,8 @@ def rewrite_literals(class_obj, conversion, args):
             arg = args[i]
             if issubclass(type(t), TypeVar) and not isinstance(arg, UnboundType):
                 b = t.__bound__
-                # TODO: done for all literals now, how can we achieve only doing this for custom values?
-                # n=NewType(...) + VarType(..., bound=n) failed because the translated type is not a subtype of
-                # n anymore... And creating types of n during analysis doesn't work :(
-                
-                # OLD code:
-                # if b and isinstance(b, FunctionType):
-                #   args[i] = do_raw_conversion(b.__name__, conversion, arg)
-                args[i] = conversion(arg)
+                if b and is_raw_type(b):
+                    args[i] = conversion(arg)
 
     return orig_params_type(args)
 

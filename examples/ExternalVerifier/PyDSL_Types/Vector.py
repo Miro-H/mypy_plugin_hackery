@@ -1,14 +1,15 @@
 import logging
 
-from typing import Generic, TypeVar
+from typing import Annotated, Generic, TypeVar
 
-from PyDSL.CustomTypes import IntKind, custom_types
+from PyDSL.CustomTypes import IntKind, ConvertRawLiterals, custom_types
 from PyDSL.Constraints import ConstraintContext, class_constraint
 
 from mypy.types import LiteralType
 
 T = TypeVar("T", bound=IntKind)
-U = TypeVar("U", bound=int)
+U = TypeVar("U", bound=Annotated[int, ConvertRawLiterals])
+
 
 @custom_types
 class Vector(Generic[T, U]):
