@@ -10,6 +10,8 @@ from PyDSL_Types import *
 x: Vector[Int32, 20] = Vector(list(range(1, 21)))
 y: Vector[Int32, 20] = Vector([1] * 20)
 
+# TODO: Vector[Int32, [20, 30]]
+
 # Allowed
 print("Resulting vector: ", x + y)
 
