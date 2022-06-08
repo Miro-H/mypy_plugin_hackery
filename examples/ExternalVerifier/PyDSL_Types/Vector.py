@@ -1,11 +1,9 @@
 import logging
 
-from typing import Annotated, Generic, TypeVar
+from typing import Annotated, Any, Generic, TypeVar
 
 from PyDSL.CustomTypes import IntKind, ConvertRawLiterals, custom_types
 from PyDSL.Constraints import ConstraintContext, class_constraint
-
-from mypy.types import LiteralType
 
 T = TypeVar("T", bound=IntKind)
 U = TypeVar("U", bound=Annotated[int, ConvertRawLiterals])
@@ -41,11 +39,15 @@ class Vector(Generic[T, U]):
 @class_constraint(Vector)
 def is_valid_vector(ctx: ConstraintContext):
 
-    def custom_validator(elem_type, dim):
-        if dim % 10 == 0:
+    def custom_validator(elem_type, dims):
+        if not isinstance(dims, list):
+            dims = [dims]
+
+        if all([dim % 10 == 0 for dim in dims]):
+        # if dim % 10 == 0:
             return True
         else:
-            return False, f"Wrong dimension, must be zero modulo 10 but is {dim} = {dim % 10} (mod 10)"
+            return False, f"Wrong dimensions, must all be zero modulo 10 but have {dims}"
 
     return ctx.validate_types_with_fn(custom_validator)
 

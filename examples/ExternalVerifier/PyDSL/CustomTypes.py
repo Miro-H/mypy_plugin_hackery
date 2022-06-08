@@ -1,6 +1,10 @@
+import logging
+
+from PyDSL.RawLiteralTranslator import RawLiteralTranslator
+
 from .Const import *
 from typing import Annotated, Final, Generic, Literal, NewType, Type, TypeVar
-from mypy.types import UnboundType
+from mypy.types import UnboundType, RawExpressionType
 
 
 def make_literal(e):
@@ -24,11 +28,6 @@ def is_raw_type(t: Type) -> bool:
 
     return False
 
-
-def do_raw_conversion(name, conversion, raw_val):
-    return conversion[name](raw_val)
-
-
 def rewrite_literals(class_obj, conversion, args):
     """
     Allow custom parsing for custom types.
@@ -43,7 +42,8 @@ def rewrite_literals(class_obj, conversion, args):
             if issubclass(type(t), TypeVar) and not isinstance(arg, UnboundType):
                 b = t.__bound__
                 if b and is_raw_type(b):
-                    args[i] = conversion(arg)
+                    visitor = RawLiteralTranslator(conversion)
+                    args[i] = arg.accept(visitor)
 
     return orig_params_type(args)
 
@@ -75,9 +75,7 @@ def custom_types(decorated_class):
     decorated_class_getitem = decorated_class.__class_getitem__
 
     def __class_getitem__(params):  # cls is implicit
-        print("class_getitem before rewrite", params)
         params = rewrite_literals(decorated_class, RUNTIME_CONVERSION, params)
-        print("class_getitem after rewrite", params)
         return decorated_class_getitem(params=params)
 
     decorated_class.__class_getitem__ = __class_getitem__

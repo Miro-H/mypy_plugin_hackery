@@ -7,8 +7,9 @@ from PyDSL_Types import *
 ##################### Vector Test #####################
 #######################################################
 
-x: Vector[Int32, 20] = Vector(list(range(1, 21)))
-y: Vector[Int32, 20] = Vector([1] * 20)
+# x: Vector[Int32, 20] = Vector(list(range(1, 21)))
+x: Vector[Int32, [10, 20]] = Vector(list(range(1, 21)))
+y: Vector[Int32, [10, 20]] = Vector([1] * 20)
 
 # TODO: Vector[Int32, [20, 30]]
 

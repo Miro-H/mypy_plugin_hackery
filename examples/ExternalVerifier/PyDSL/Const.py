@@ -13,6 +13,8 @@ PLUGIN_VERSION_WARNING = "The custom PyDSLPlugin for MyPy was not tested with yo
 PARSE_TYPE_UNEXPECTED_RAW = "Encountered unexpected raw type {0}"
 PARSE_TYPE_UNKNOWN_RAW_TYPE_WARNING = "Could not determine raw type for {0}"
 
+REWRITE_LITERALS_NOP = "rewrite_literals could not find any literals to rewrite."
+
 TESTED_VERSIONS = ["0.950"]
 
 VALIDATE_TYPE_MISSING_RAW = "Could not perform validation because the raw types are missing."
