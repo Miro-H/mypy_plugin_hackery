@@ -1,3 +1,9 @@
+# mypy: ignore-errors
+
+# We know that the strategy always returns a list, but MyPy doesn't
+# understand this, to avoid a large number of "type: ignore" statements
+# we deactivate mypy for this file.
+
 from typing import List, Union
 from mypy.types import (
     AnyType, CallableType, DeletedType, EllipsisType, ErasedType, Instance,
@@ -20,8 +26,6 @@ class RawLiteralTranslator(TypeQuery[RetType]):
     Translate all raw literals in a type (can be complex and nested)
     """
 
-    # We know that the strategy always returns a list, but MyPy doesn't
-    # understand this, so we need to add a lot of type: ignore statements
     def __init__(self, conversion) -> None:
         self.conversion = conversion
 
@@ -31,59 +35,57 @@ class RawLiteralTranslator(TypeQuery[RetType]):
         super().__init__(nop_strategy)
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
-        t.args = self.query_types(t.args)  # type: ignore
+        t.args = self.query_types(t.args)
         return t
 
     def visit_type_list(self, t: TypeList) -> Type:
-        r = super().visit_type_list(t)
-        t.items = r  # type: ignore
-        return t
+        return UnionType(super().visit_type_list(t))
 
     def visit_type_var(self, t: TypeVarType) -> Type:
-        t.upper_bound = self.query_types([t.upper_bound])[0]  # type: ignore
-        t.values = self.query_types(t.values)  # type: ignore
+        t.upper_bound = self.query_types([t.upper_bound])[0]
+        t.values = self.query_types(t.values)
         return t
 
     def visit_unpack_type(self, t: UnpackType) -> Type:
-        t.type = self.query_types([t.type])[0]  # type: ignore
+        t.type = self.query_types([t.type])[0]
         return t
 
     def visit_parameters(self, t: Parameters) -> Type:
-        t.arg_types = self.query_types(t.arg_types)  # type: ignore
+        t.arg_types = self.query_types(t.arg_types)
         return t
 
     def visit_instance(self, t: Instance) -> Type:
-        t.args = self.query_types(t.args)  # type: ignore
+        t.args = self.query_types(t.args)
         return t
 
     def visit_callable_type(self, t: CallableType) -> Type:
-        t.arg_types = self.query_types(t.arg_types)  # type: ignore
-        t.ret_type = self.query_types([t.ret_type])[0]  # type: ignore
+        t.arg_types = self.query_types(t.arg_types)
+        t.ret_type = self.query_types([t.ret_type])[0]
         return t
 
     def visit_tuple_type(self, t: TupleType) -> Type:
-        t.items = self.query_types(t.items)  # type: ignore
+        t.items = self.query_types(t.items)
         return t
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
         r = self.query_types(t.items.values())
         for i, k in enumerate(t.items.keys()):
-            t.items[k] = r[i]  # type: ignore
+            t.items[k] = r[i]
         return t
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> Type:
         return self.conversion(t)
 
     def visit_union_type(self, t: UnionType) -> Type:
-        t.items = self.query_types(t.items)  # type: ignore
+        t.items = self.query_types(t.items)
         return t
 
     def visit_overloaded(self, t: Overloaded) -> Type:
-        t.items = self.query_types(t.items)  # type: ignore
+        t.items = self.query_types(t.items)
         return t
 
     def visit_placeholder_type(self, t: PlaceholderType) -> Type:
-        t.args = self.query_types(t.args)  # type: ignore
+        t.args = self.query_types(t.args)
         return t
 
     #

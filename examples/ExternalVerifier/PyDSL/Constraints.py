@@ -2,7 +2,7 @@ import logging
 import traceback
 from PyDSL.CustomTypes import rewrite_literals
 
-from PyDSL.TypeParsingVisitor import TypeParsingVisitor
+from PyDSL.TypeToLiteralTranslator import TypeToLiteralTranslator
 from PyDSL.InternalUtils import get_fqcn
 
 from .Const import *
@@ -88,29 +88,15 @@ class ConstraintContext:
             else:
                 return NoneType()
 
+        type2literal_visitor = TypeToLiteralTranslator()
+
         args = rewrite_literals(obj, make_literal_type, at_ctx.type.args)
         for arg in args:
-            t_parsed, t_raw = self.parse_type(arg)
+            t_parsed = at_ctx.api.analyze_type(arg)
             self.types.append(t_parsed)
+
+            t_raw = t_parsed.accept(type2literal_visitor)
             self.types_raw.append(t_raw)
-        
-    def parse_type(self, t: Type) -> Tuple[Type, Optional[list]]:
-        def strategy(results):
-            ret_parsed = []
-            ret_raw = []
-
-            for parsed, raw in results:
-                ret_parsed.append(parsed)
-                if raw:
-                    ret_raw += raw
-
-            if len(ret_parsed) > 1:
-                ret_parsed = UnionType(ret_parsed)
-
-            return ret_parsed, ret_raw
-
-        visitor = TypeParsingVisitor(self.at_ctx, strategy)
-        return t.accept(visitor)
 
     def validate_types(self, exp_types: List[object]) -> bool:
         """

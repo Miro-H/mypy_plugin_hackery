@@ -1,10 +1,11 @@
 import logging
+import builtins
 
 from PyDSL.RawLiteralTranslator import RawLiteralTranslator
 
 from .Const import *
-from typing import Annotated, Final, Generic, Literal, NewType, Type, TypeVar
-from mypy.types import UnboundType, RawExpressionType
+from typing import Annotated, Final, Generic, Literal, Type, TypeVar
+from mypy.types import UnboundType
 
 
 def make_literal(e):
@@ -19,14 +20,29 @@ class ConvertRawLiterals:
     pass
 
 
+def has_annotation(t: Type) -> bool:
+    return isinstance(t, ANNOTATED_TYPE) and hasattr(t, "__metadata__")
+
+
 def is_raw_type(t: Type) -> bool:
-    if not isinstance(t, ANNOTATED_TYPE) or not hasattr(t, "__metadata__"):
-        return False
+    return has_annotation(t) and ConvertRawLiterals in t.__metadata__
 
-    if ConvertRawLiterals in t.__metadata__:  # type: ignore
-        return True
 
-    return False
+def convert_recursively(conversion, arg):
+    if type(arg) in [int, str, bytes, bool]:
+        return conversion(arg)
+    elif type(arg) in [list, tuple, set]:
+        # TODO:
+        raise NotImplementedError("TODO")
+    elif type(arg) in builtins.__dict__.values():
+        # TODO: is there a use case for dicts, ...?
+        raise NotImplementedError(
+            f"Support for type {type(arg)} is not yet implemented at runtime.")
+
+    visitor = RawLiteralTranslator(conversion)
+    r = arg.accept(visitor)
+    return r
+
 
 def rewrite_literals(class_obj, conversion, args):
     """
@@ -42,9 +58,7 @@ def rewrite_literals(class_obj, conversion, args):
             if issubclass(type(t), TypeVar) and not isinstance(arg, UnboundType):
                 b = t.__bound__
                 if b and is_raw_type(b):
-                    visitor = RawLiteralTranslator(conversion)
-                    args[i] = arg.accept(visitor)
-
+                    args[i] = convert_recursively(conversion, arg)
     return orig_params_type(args)
 
 
