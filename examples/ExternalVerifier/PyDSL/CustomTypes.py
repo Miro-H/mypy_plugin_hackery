@@ -4,7 +4,7 @@ import builtins
 from PyDSL.RawLiteralTranslator import RawLiteralTranslator
 
 from .Const import *
-from typing import Annotated, Final, Generic, Literal, Type, TypeVar
+from typing import Annotated, Final, Generic, Literal, Type, TypeVar, get_origin
 from mypy.types import UnboundType
 
 
@@ -44,7 +44,21 @@ def convert_recursively(conversion, arg):
     return r
 
 
-def rewrite_literals(class_obj, conversion, args):
+def get_bounds(obj, convert_annotated=False):
+    bounds = []
+    for param in obj.__parameters__:
+        if hasattr(param, "__bound__"):
+            bound = param.__bound__
+            if isinstance(bound, ANNOTATED_TYPE):
+                bound = bound.__args__[0]
+            bounds.append(bound)
+        else:
+            bounds.append(param)
+
+    return bounds
+
+
+def rewrite_literals(class_obj, args, conversion=RUNTIME_CONVERSION):
     """
     Allow custom parsing for custom types.
     """
@@ -89,7 +103,7 @@ def custom_types(decorated_class):
     decorated_class_getitem = decorated_class.__class_getitem__
 
     def __class_getitem__(params):  # cls is implicit
-        params = rewrite_literals(decorated_class, RUNTIME_CONVERSION, params)
+        params = rewrite_literals(decorated_class, params)
         return decorated_class_getitem(params=params)
 
     decorated_class.__class_getitem__ = __class_getitem__

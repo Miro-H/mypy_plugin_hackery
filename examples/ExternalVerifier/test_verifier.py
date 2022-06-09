@@ -1,4 +1,4 @@
-from typing import Literal, Dict, Tuple
+from typing import Literal, Dict, Tuple, List
 from mypy.types import Union
 
 from PyDSL.CustomTypes import *
@@ -10,13 +10,11 @@ from PyDSL_Types import *
 ##################### Vector Test #####################
 #######################################################
 
-# x: Vector[Int32, 20] = Vector(list(range(1, 21)))
-x: Vector[Int32, Union[Literal[10], Literal[20]]] = Vector(list(range(1, 21)))
-y: Vector[Int32, [10, 20]] = Vector(list(range(1, 21)))
-# y: Vector[Int32, [10, 20]] = Vector([1] * 20)
+x: Vector[Int32, 20] = Vector(list(range(1, 21)))
+y: Vector[Int32, 20] = Vector([1] * 20)
 
 # Allowed
-# print("Resulting vector: ", x + y)
+print("Resulting vector: ", x + y)
 
 # Error (invalid vectors)
 # u : Vector[float, 10]
@@ -28,6 +26,13 @@ y: Vector[Int32, [10, 20]] = Vector(list(range(1, 21)))
 # z2: Vector[Int16, 20] = Vector([1] * 6)
 # print("Resulting vector: ", x + z2)
 
+#######################################################
+##################### Tensor Test #####################
+#######################################################
+
+t1: Tensor[Int16, List[Literal[10, 30]]]
+# t1: Tensor[Int16, [10, 30]]
+# t1: Tensor[Int16, [10, 30]]
 
 ######################################################
 ##################### Money Test #####################

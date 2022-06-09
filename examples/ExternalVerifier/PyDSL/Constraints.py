@@ -1,13 +1,16 @@
 import logging
 import traceback
-from PyDSL.CustomTypes import rewrite_literals
 
+from typing import Callable, Dict, List, Union, Tuple, Optional, Final
+
+from pytypes import is_of_type
+
+from PyDSL.CustomTypes import rewrite_literals, get_bounds
 from PyDSL.TypeToLiteralTranslator import TypeToLiteralTranslator
 from PyDSL.InternalUtils import get_fqcn
 
 from .Const import *
 
-from typing import Callable, Dict, List, Union, Tuple, Optional, Final
 from mypy.types import AnyType, Type, TypeOfAny, TypeVarType, UnionType, RawExpressionType, LiteralType, NoneType
 from mypy.plugin import AnalyzeTypeContext, AttributeContext
 
@@ -72,6 +75,7 @@ class ConstraintContext:
 
     def __init__(self, at_ctx: AnalyzeTypeContext, obj) -> None:
         self.at_ctx = at_ctx
+        self.bounds = get_bounds(obj)
 
         # Analyze types of arguments and convert builtin.{int,bool} literals `a`
         # to `Literal[a]` if custom literal parsing is active.
@@ -94,29 +98,36 @@ class ConstraintContext:
         for arg in args:
             t_parsed = at_ctx.api.analyze_type(arg)
             self.types.append(t_parsed)
+            print("parsed", t_parsed, type(t_parsed))
 
             t_raw = t_parsed.accept(type2literal_visitor)
             self.types_raw.append(t_raw)
 
-    def validate_types(self, exp_types: List[object]) -> bool:
-        """
-        Validate that the given types correspond to a list of expected types.
+        self.validate_err: Tuple[str, str] = ("", "")
 
-        Additionally, we always accept when all type hints are TypeVars, since
-        the Generic definition of the class is also type checked, e.g.,
-        `Vector[U, V]` as return type of `Vector.copy()`.
+    def validate(self) -> bool:
         """
-
-        # Trivially different
-        if len(self.types) != len(exp_types):
-            return False
+        Validate basic types
+        """
 
         # Special case for all TypeVars
         if all([isinstance(t, TypeVarType) for t in self.types]):
             return True
 
-        # Compare parsed types to expected types and return True iff all match
-        return all([self.types_raw[i] == exp_types[i] for i in range(len(exp_types))])
+        for i, bound in enumerate(self.bounds):
+            subclass_fail = subtype_fail = False
+            if isinstance(bound, type):
+                _t = self.types_raw[i]
+                t = _t if isinstance(_t, type) else type(_t)
+                subclass_fail = not issubclass(t, bound)  # type: ignore
+            elif not is_of_type(self.types_raw[i], bound):
+                subtype_fail = True
+
+            if subclass_fail or subtype_fail:
+                self.validate_err = (str(bound), str(self.types_raw[i]))
+                return False
+
+        return True
 
     def validate_types_with_fn(self,
                                fn: Callable[..., bool],
@@ -179,18 +190,27 @@ def class_constraint(obj):
             type_args = constraint_ctx.types
             if not isinstance(type_args, list):
                 type_args = list(type_args)
+
+            success = True
             err = CONSTRAINT_DEFAULT_FAILED_ERROR_MSG.format(fqcn, type_args)
 
-            try:
-                success = fn(constraint_ctx)
-            except Exception as e:
-                logging.error(CONSTRAINT_CUSTOM_FN_FAILED_MSG.format(
-                    fqcn, repr(e), traceback.format_exc()))
-                err = CONSTRAINT_CUSTOM_FN_FAILED_SHORT_MSG.format(fqcn)
+            if not constraint_ctx.validate():
+                v_err = constraint_ctx.validate_err
+                err = CONSTRAINT_WRONG_BASIC_TYPES.format(v_err[0], v_err[1])
                 success = False
 
-            if isinstance(success, tuple):
-                success, err = success
+            if success:
+                try:
+                    r = fn(constraint_ctx)
+                    if isinstance(r, tuple):
+                        success, err = r
+                    else:
+                        success = r
+                except Exception as e:
+                    logging.error(CONSTRAINT_CUSTOM_FN_FAILED_MSG.format(
+                        fqcn, repr(e), traceback.format_exc()))
+                    err = CONSTRAINT_CUSTOM_FN_FAILED_SHORT_MSG.format(fqcn)
+                    success = False
 
             if success:
                 return at_ctx.api.named_type(fqcn, constraint_ctx.types)

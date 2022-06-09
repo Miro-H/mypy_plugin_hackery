@@ -3,6 +3,7 @@ CONSTRAINTS_OVERWRITING_WARNING = "Overwriting constraint for '{0}'. Only use a 
 CONSTRAINT_DEFAULT_FAILED_ERROR_MSG = "Invalid custom type '{0}'{1}"
 CONSTRAINT_CUSTOM_FN_FAILED_MSG = "Custom constraint function for type '{0}' failed with error:\n{1}\nThis may happen because the type is instantiated with invalid types, which are only validated after the constraint is checked.\n\nFull trace:\n{2}"
 CONSTRAINT_CUSTOM_FN_FAILED_SHORT_MSG = "Custom constraint function for type '{0}' threw exception."
+CONSTRAINT_WRONG_BASIC_TYPES = "Invalid type arguments. Expected '{0}', got '{1}'."
 
 ATTRIBUTE_CONSTRAINT_DEFAULT_FAILED_ERROR_MSG = "Invalid attribute of class '{0}' with type '{1}'"
 
