@@ -2,8 +2,8 @@ import logging
 import builtins
 
 from PyDSL.RawLiteralTranslator import RawLiteralTranslator
-from PyDSL.InternalUtils import get_fqcn, make_literal
-from .Const import *
+from PyDSL.InternalUtils import get_fqcn, make_literal, is_mypy_type
+from PyDSL.Const import *
 
 from typing import (
     Annotated, Final, Generic, Literal, Type, TypeVar,
@@ -57,19 +57,31 @@ def unwrap_custom_bound(bound):
 
 
 def convert_recursively(conversion, arg, ctx):
+    # First check for basic types, which are normally not allowed
+    # in type arguments and thus need to be converted.
     if type(arg) in [int, str, bytes, bool]:
         return conversion(arg, ctx)
     elif type(arg) in [list, tuple, set]:
-        # TODO:
-        raise NotImplementedError("TODO")
+        args_conv = [convert_recursively(conversion, a, ctx) for a in arg]
+        return Union[tuple(args_conv)]
     elif type(arg) in builtins.__dict__.values():
         # TODO: is there a use case for dicts, ...?
         raise NotImplementedError(
-            f"Support for type {type(arg)} is not yet implemented at runtime.")
+            RECURSIVE_CONVERSION_NOT_IMPLEMENTED.format(type(arg)))
+    # For MYPY types, we can use a visitor for the rewriting
+    elif is_mypy_type(arg):
+        visitor = RawLiteralTranslator(ctx)
+        r = arg.accept(visitor)
+        return r
+    # Otherwise, if the argument is has parameters, we just keep it and recursively
+    # analyze the params
+    elif hasattr(arg, "__args__"):
+        arg.__args__ = [convert_recursively(
+            conversion, a, ctx) for a in arg.__args__]
+        return arg
 
-    visitor = RawLiteralTranslator(ctx)
-    r = arg.accept(visitor)
-    return r
+    raise ValueError(
+        RECURSIVE_CONVERSION_UNEXPECTED_VALUE.format(arg, type(arg)))
 
 
 def get_bounds(obj, convert_annotated=False):

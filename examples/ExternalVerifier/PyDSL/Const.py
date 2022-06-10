@@ -27,3 +27,6 @@ VISITOR_INSTANCE_UNEXPECTED_ARGS_NR = "query_types call in instance visitor retu
 
 TYPE_TO_LITERAL_UNKNOWN_INSTANCE = "Unknown instance ignored, only returned arguments"
 TYPE_TO_LITERAL_NO_CAST = "No cast for arguments '{0}' of '{1}' performed. Thus, neglect arguments.\nError:\n{2}"
+
+RECURSIVE_CONVERSION_NOT_IMPLEMENTED = "Support for type {0} is not yet implemented at runtime."
+RECURSIVE_CONVERSION_UNEXPECTED_VALUE = "Recursive conversion encountered the value '{0}' of unexpected type '{1}'"
