@@ -15,9 +15,6 @@ class Vector(Generic[T, U]):
         self.dim = len(l)
         self.l = l
 
-    # TODO: overwrite add that only some sizes are allowed to be added if one of the types is even
-    # TODO: define type that produces new types as result dep on input (vector concatenation)
-
     def __add__(self: 'Vector[T, U]', other: 'Vector[T, U]') -> 'Vector[T, U]':
         if self.get_dim() != other.get_dim():
             logging.error("Added vectors must have the same dimensions.\n"

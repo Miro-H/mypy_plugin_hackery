@@ -136,6 +136,8 @@ def custom_types(decorated_class):
     decorated_class_getitem = decorated_class.__class_getitem__
 
     def __class_getitem__(params):  # cls is implicit
+        if not hasattr(params, "__iter__"):
+            params = (params,)
         params = rewrite_literals(decorated_class, params)
         return decorated_class_getitem(params=params)
 
