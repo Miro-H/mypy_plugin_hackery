@@ -2,18 +2,26 @@ import logging
 import builtins
 
 from PyDSL.RawLiteralTranslator import RawLiteralTranslator
-
+from PyDSL.InternalUtils import get_fqcn, make_literal
 from .Const import *
-from typing import Annotated, Final, Generic, Literal, Type, TypeVar, get_origin
-from mypy.types import UnboundType
 
+from typing import (
+    Annotated, Final, Generic, Literal, Type, TypeVar,
+    Optional, Union, List, Any
+)
 
-def make_literal(e):
-    return Literal[e]  # type: ignore
+from mypy.types import UnboundType, RawExpressionType, LiteralType, NoneType
+from mypy.plugin import AnalyzeTypeContext
 
-
-RUNTIME_CONVERSION = make_literal
 ANNOTATED_TYPE: Final = type(Annotated[int, ""])
+
+
+class CustomAny:
+    def __init__(self, t: type):
+        self.t = t
+
+
+CustomInt = Annotated[Any, CustomAny(int)]
 
 
 class ConvertRawLiterals:
@@ -28,9 +36,29 @@ def is_raw_type(t: Type) -> bool:
     return has_annotation(t) and ConvertRawLiterals in t.__metadata__
 
 
-def convert_recursively(conversion, arg):
+def get_custom_any(t):
+    if has_annotation(t):
+        for md in t.__metadata__:
+            if isinstance(md, CustomAny):
+                return md.t
+    return None
+
+
+def unwrap_custom_bound(bound):
+    real_t = get_custom_any(bound)
+
+    if real_t:
+        return real_t
+    else:
+        if hasattr(bound, "__args__"):
+            bound.__args__ = tuple([unwrap_custom_bound(arg)
+                                   for arg in bound.__args__])
+        return bound
+
+
+def convert_recursively(conversion, arg, ctx):
     if type(arg) in [int, str, bytes, bool]:
-        return conversion(arg)
+        return conversion(arg, ctx)
     elif type(arg) in [list, tuple, set]:
         # TODO:
         raise NotImplementedError("TODO")
@@ -39,7 +67,7 @@ def convert_recursively(conversion, arg):
         raise NotImplementedError(
             f"Support for type {type(arg)} is not yet implemented at runtime.")
 
-    visitor = RawLiteralTranslator(conversion)
+    visitor = RawLiteralTranslator(ctx)
     r = arg.accept(visitor)
     return r
 
@@ -58,7 +86,7 @@ def get_bounds(obj, convert_annotated=False):
     return bounds
 
 
-def rewrite_literals(class_obj, args, conversion=RUNTIME_CONVERSION):
+def rewrite_literals(class_obj, args, ctx=None):
     """
     Allow custom parsing for custom types.
     """
@@ -72,15 +100,8 @@ def rewrite_literals(class_obj, args, conversion=RUNTIME_CONVERSION):
             if issubclass(type(t), TypeVar) and not isinstance(arg, UnboundType):
                 b = t.__bound__
                 if b and is_raw_type(b):
-                    args[i] = convert_recursively(conversion, arg)
+                    args[i] = convert_recursively(make_literal, arg, ctx)
     return orig_params_type(args)
-
-
-def rewrite_literal(class_obj, conversion, arg):
-    if not isinstance(arg, tuple):
-        arg = (arg,)
-    r = rewrite_literals(class_obj, conversion, arg)
-    return r[0]
 
 
 def has_custom_bound(param, aggregate=False):

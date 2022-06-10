@@ -10,11 +10,11 @@ from PyDSL_Types import *
 ##################### Vector Test #####################
 #######################################################
 
-x: Vector[Int32, 20] = Vector(list(range(1, 21)))
-y: Vector[Int32, 20] = Vector([1] * 20)
+# x: Vector[Int32, 20] = Vector(list(range(1, 21)))
+# y: Vector[Int32, 20] = Vector([1] * 20)
 
-# Allowed
-print("Resulting vector: ", x + y)
+# # Allowed
+# print("Resulting vector: ", x + y)
 
 # Error (invalid vectors)
 # u : Vector[float, 10]
@@ -31,8 +31,13 @@ print("Resulting vector: ", x + y)
 #######################################################
 
 t1: Tensor[Int16, List[Literal[10, 30]]]
-# t1: Tensor[Int16, [10, 30]]
-# t1: Tensor[Int16, [10, 30]]
+t2: Tensor[Int16, [10, 30]]
+
+# Invalid type arguments. Expected 'typing.List[int]', got '['10', '30']'.
+# t3: Tensor[Int16, ["10", "30"]]
+
+# Invalid type arguments. Expected 'typing.List[int]', got '[10, '30']'.
+# t4: Tensor[Int16, [10, "30"]]
 
 ######################################################
 ##################### Money Test #####################

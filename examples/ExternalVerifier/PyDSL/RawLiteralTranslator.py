@@ -13,6 +13,8 @@ from mypy.types import (
 )
 from mypy.type_visitor import TypeQuery
 
+from PyDSL.InternalUtils import make_builtin, make_literal
+
 # typing does not allow us to inherit directly from SyntheticTypeVisitor
 # and using TypeTranslator is not accepted by mypy types like RawExpressionType.
 # Thus, we need to use TypeQuery and overwrite some of the changes it made to
@@ -26,8 +28,8 @@ class RawLiteralTranslator(TypeQuery[RetType]):
     Translate all raw literals in a type (can be complex and nested)
     """
 
-    def __init__(self, conversion) -> None:
-        self.conversion = conversion
+    def __init__(self, ctx) -> None:
+        self.ctx = ctx
 
         def nop_strategy(l) -> List[Type]:
             return l
@@ -39,7 +41,7 @@ class RawLiteralTranslator(TypeQuery[RetType]):
         return t
 
     def visit_type_list(self, t: TypeList) -> Type:
-        return UnionType(super().visit_type_list(t))
+        return make_builtin(list, [UnionType(super().visit_type_list(t))], self.ctx)
 
     def visit_type_var(self, t: TypeVarType) -> Type:
         t.upper_bound = self.query_types([t.upper_bound])[0]
@@ -74,7 +76,7 @@ class RawLiteralTranslator(TypeQuery[RetType]):
         return t
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> Type:
-        return self.conversion(t)
+        return make_literal(t, self.ctx)
 
     def visit_union_type(self, t: UnionType) -> Type:
         t.items = self.query_types(t.items)

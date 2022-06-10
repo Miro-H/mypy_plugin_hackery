@@ -19,6 +19,11 @@ REWRITE_LITERALS_NOP = "rewrite_literals could not find any literals to rewrite.
 TESTED_VERSIONS = ["0.950"]
 
 VALIDATE_TYPE_MISSING_RAW = "Could not perform validation because the raw types are missing."
+VALIDATE_PYTYPES_IS_OF_TYPE_ERROR = "is_of_type({0}, {1}) from pytypes failed with exception:\n{2}"
+
 VISITOR_NOT_IMPLEMENTED = "Visit function for '{0}' not implemented yet."
 VISITOR_INSTANCE_EXPECTED_LIST = "Return values of query_types expected to be lists, instead got '{0}', '{1}'"
 VISITOR_INSTANCE_UNEXPECTED_ARGS_NR = "query_types call in instance visitor returned an unexpected number of results.\ntypes: '{0}', raw: '{1}'"
+
+TYPE_TO_LITERAL_UNKNOWN_INSTANCE = "Unknown instance ignored, only returned arguments"
+TYPE_TO_LITERAL_NO_CAST = "No cast for arguments '{0}' of '{1}' performed. Thus, neglect arguments.\nError:\n{2}"

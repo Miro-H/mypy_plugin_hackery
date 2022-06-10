@@ -1,11 +1,11 @@
 
-from typing import List, Generic, TypeVar, Any, Literal
+from typing import List, Generic, TypeVar, Any, Literal, NewType
 
 from PyDSL.CustomTypes import *
 from PyDSL.Constraints import ConstraintContext, class_constraint
 
 T = TypeVar("T", bound=IntKind)
-V = TypeVar("V", bound=Annotated[List[int], ConvertRawLiterals])
+V = TypeVar("V", bound=Annotated[List[CustomInt], ConvertRawLiterals])
 
 
 @custom_types

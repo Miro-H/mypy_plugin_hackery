@@ -5,13 +5,13 @@ from typing import Callable, Dict, List, Union, Tuple, Optional, Final
 
 from pytypes import is_of_type
 
-from PyDSL.CustomTypes import rewrite_literals, get_bounds
+from PyDSL.CustomTypes import rewrite_literals, get_bounds, unwrap_custom_bound
 from PyDSL.TypeToLiteralTranslator import TypeToLiteralTranslator
 from PyDSL.InternalUtils import get_fqcn
 
 from .Const import *
 
-from mypy.types import AnyType, Type, TypeOfAny, TypeVarType, UnionType, RawExpressionType, LiteralType, NoneType
+from mypy.types import AnyType, Type, TypeOfAny, TypeVarType
 from mypy.plugin import AnalyzeTypeContext, AttributeContext
 
 
@@ -82,23 +82,12 @@ class ConstraintContext:
         self.types = []
         self.types_raw = []
 
-        def make_literal_type(e: RawExpressionType):
-            val = e.literal_value
-            if val:
-                return LiteralType(
-                    value=val,
-                    fallback=at_ctx.api.named_type(e.base_type_name, [])
-                )
-            else:
-                return NoneType()
-
         type2literal_visitor = TypeToLiteralTranslator()
 
-        args = rewrite_literals(obj, make_literal_type, at_ctx.type.args)
+        args = rewrite_literals(obj, at_ctx.type.args, ctx=at_ctx)
         for arg in args:
             t_parsed = at_ctx.api.analyze_type(arg)
             self.types.append(t_parsed)
-            print("parsed", t_parsed, type(t_parsed))
 
             t_raw = t_parsed.accept(type2literal_visitor)
             self.types_raw.append(t_raw)
@@ -116,12 +105,21 @@ class ConstraintContext:
 
         for i, bound in enumerate(self.bounds):
             subclass_fail = subtype_fail = False
+
+            bound = unwrap_custom_bound(bound)
+
             if isinstance(bound, type):
                 _t = self.types_raw[i]
                 t = _t if isinstance(_t, type) else type(_t)
                 subclass_fail = not issubclass(t, bound)  # type: ignore
-            elif not is_of_type(self.types_raw[i], bound):
-                subtype_fail = True
+            else:
+                try:
+                    if not is_of_type(self.types_raw[i], bound):
+                        subtype_fail = True
+                except AssertionError as e:
+                    logging.debug(VALIDATE_PYTYPES_IS_OF_TYPE_ERROR.format(
+                        self.types_raw[i], bound, e))
+                    subtype_fail = True
 
             if subclass_fail or subtype_fail:
                 self.validate_err = (str(bound), str(self.types_raw[i]))
