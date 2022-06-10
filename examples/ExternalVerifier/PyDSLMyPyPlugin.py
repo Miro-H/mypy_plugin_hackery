@@ -1,7 +1,7 @@
 
 import logging
 
-from mypy.plugin import Plugin, AttributeContext
+from mypy.plugin import Plugin, MethodSigContext
 from typing import Any, Optional, Callable, Type
 
 from PyDSL.Constraints import Constraints
@@ -14,16 +14,19 @@ from PyDSL_Types import *
 
 class PyDSLPlugin(Plugin):
     def get_type_analyze_hook(self, fullname: str):
-        for n, cb in Constraints().get_class_constraints().items():
-            if fullname == n:
-                return cb
+        return Constraints().get_class_constraint(fullname)
 
     def get_attribute_hook(self, fullname: str):
-        for n, cb in Constraints().get_attributes_constraints().items():
-            if fullname == n:
-                return cb
+        return Constraints().get_attributes_constraint(fullname)
+    
+    def get_method_signature_hook(self, fullname: str):
+        if fullname == "PyDSL_Types.ConstList.ConstList.__add__":
+            return test_cb
 
-        return None
+def test_cb(ctx: MethodSigContext):
+    print(ctx.type, type(ctx.type))
+    print(ctx.context)
+    # TODO: continue here!
 
 def plugin(version: str):
     if version not in TESTED_VERSIONS:

@@ -30,8 +30,8 @@ from PyDSL_Types import *
 ##################### Tensor Test #####################
 #######################################################
 
-t1: Tensor[Int16, List[Literal[10, 30]]]
-t2: Tensor[Int16, [10, 30]]
+# t1: Tensor[Int16, List[Literal[10, 30]]]
+# t2: Tensor[Int16, [10, 30]]
 
 # Invalid type arguments. Expected 'typing.List[int]', got '['10', '30']'.
 # t3: Tensor[Int16, ["10", "30"]]
@@ -79,3 +79,14 @@ t2: Tensor[Int16, [10, 30]]
 
 # # Throws error because secret attribute is accessed
 # # print(p.health_record)
+
+
+######################################################
+################### ConstList Test ###################
+######################################################
+
+l1: ConstList[3] = ConstList([1] * 3)
+l2: ConstList[2] = ConstList(["z"] * 2)
+
+l3 = l1 + l2
+print(__annotations__)

@@ -34,22 +34,16 @@ class Constraints(object):
             logging.warning(CONSTRAINTS_OVERWRITING_WARNING.format(key))
         self._class_constraints[key] = item
 
-    def get_class_constraint(self, key: str) -> Callable:
-        return self._class_constraints[key]
-
-    def get_class_constraints(self) -> Dict[str, Callable]:
-        return self._class_constraints
+    def get_class_constraint(self, key: str) -> Optional[Callable]:
+        return self._class_constraints.get(key, None)
 
     def add_attributes_constraint(self, key: str, item: Callable) -> None:
         if key in self._class_constraints:
             logging.warning(CONSTRAINTS_OVERWRITING_WARNING.format(key))
         self._attributes_constraints[key] = item
 
-    def get_attributes_constraint(self, key: str) -> Callable:
-        return self._attributes_constraints[key]
-
-    def get_attributes_constraints(self) -> Dict[str, Callable]:
-        return self._attributes_constraints
+    def get_attributes_constraint(self, key: str) -> Optional[Callable]:
+        return self._attributes_constraints.get(key, None)
 
 
 class ConstraintContext:
