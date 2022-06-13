@@ -10,7 +10,7 @@ from typing import (
     Optional, Union, List, Any
 )
 
-from mypy.types import UnboundType, RawExpressionType, LiteralType, NoneType
+from mypy.types import UnboundType, RawExpressionType, NoneType
 from mypy.plugin import AnalyzeTypeContext
 
 ANNOTATED_TYPE: Final = type(Annotated[int, ""])
