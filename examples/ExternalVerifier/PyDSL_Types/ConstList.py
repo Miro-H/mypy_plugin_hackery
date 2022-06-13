@@ -5,13 +5,14 @@ from PyDSL.Constraints import class_constraint, ConstraintContext
 
 U = TypeVar("U", bound=Annotated[int, ConvertRawLiterals])
 V = TypeVar("V", bound=Annotated[int, ConvertRawLiterals])
+W = TypeVar("W", bound=Annotated[int, ConvertRawLiterals])
 
 @custom_types
 class ConstList(Generic[U]):
     def __init__(self, l: List) -> None:
         self.l = l
     
-    def __add__(self: 'ConstList[U]', other: 'ConstList[V]') -> 'ConstList[V]':
+    def __add__(self: 'ConstList[U]', other: 'ConstList[V]') -> 'ConstList[W]':
         return ConstList(self.l + other.l)
     
     def typed_eq(self: 'ConstList[U]', other: 'ConstList[U]') -> bool:
