@@ -1,7 +1,8 @@
 
 import logging
 
-from mypy.plugin import Plugin, MethodSigContext
+from mypy.plugin import Plugin, MethodSigContext, MethodContext
+from mypy.types import get_proper_type, LiteralType, Instance
 from typing import Any, Optional, Callable, Type
 
 from PyDSL.Constraints import Constraints
@@ -19,14 +20,32 @@ class PyDSLPlugin(Plugin):
     def get_attribute_hook(self, fullname: str):
         return Constraints().get_attributes_constraint(fullname)
     
-    def get_method_signature_hook(self, fullname: str):
+    def get_method_hook(self, fullname: str):
         if fullname == "PyDSL_Types.ConstList.ConstList.__add__":
-            return test_cb
+            return list_concat_cb
 
-def test_cb(ctx: MethodSigContext):
-    print(ctx.type, type(ctx.type))
-    print(ctx.context)
-    # TODO: continue here!
+# TODO: integrate this into constraints singleton
+def list_concat_cb(ctx: MethodContext):
+    # TODO: Provide simpler abstraction for custom method signature redefinition
+    #   Maybe: expect: args_types=[ConstList[Literal[3]], ConstList[Literal[2]]], args_raw=[[2], [3]]
+    #   i.e., a special case for type vars.
+    # TODO: Can we generate the conditions below automatically?
+    if (len(ctx.arg_types) == 1 
+            and len(ctx.arg_types[0]) == 1
+            and isinstance(ctx.arg_types[0][0], Instance)
+            and len(ctx.arg_types[0][0].args) == 1
+            and isinstance(ctx.arg_types[0][0].args[0], LiteralType)
+            and isinstance(ctx.default_return_type, Instance)
+            and len(ctx.default_return_type.args) == 1
+            and isinstance(ctx.default_return_type.args[0], LiteralType)):
+
+        my_dim = ctx.type.args[0].value # type: ignore
+        other_dim = ctx.arg_types[0][0].args[0].value
+
+        ret_type = ctx.default_return_type
+        ret_type.args[0].value = my_dim + other_dim # type: ignore
+        return ret_type
+    return ctx.type
 
 def plugin(version: str):
     if version not in TESTED_VERSIONS:

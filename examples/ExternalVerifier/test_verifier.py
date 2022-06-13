@@ -85,8 +85,14 @@ from PyDSL_Types import *
 ################### ConstList Test ###################
 ######################################################
 
-l1: ConstList[3] = ConstList([1] * 3)
-l2: ConstList[2] = ConstList(["z"] * 2)
+l1: ConstList[3] = ConstList(["l1"] * 3)
+l2: ConstList[2] = ConstList(["l2"] * 2)
 
 l3 = l1 + l2
-print(__annotations__)
+
+l4: ConstList[5] = ConstList(["l1"] * 3 + ["l2"] * 2)
+print(l3.typed_eq(l4))
+
+# Error: Argument 1 to "safe_eq" of "ConstList" has incompatible type "ConstList[Literal[6]]"; expected "ConstList[Literal[5]]"
+# l5: ConstList[6] = ConstList(["l5"] * 6)
+# print(l3.typed_eq(l5))

@@ -13,8 +13,11 @@ class ConstList(Generic[U]):
     def __init__(self, l: List) -> None:
         self.l = l
     
-    def __add__(self: 'ConstList[U]', other: 'ConstList[V]') -> 'ConstList[U]':
+    def __add__(self: 'ConstList[U]', other: 'ConstList[V]') -> 'ConstList[V]':
         return ConstList(self.l + other.l)
+    
+    def typed_eq(self: 'ConstList[U]', other: 'ConstList[U]') -> bool:
+        return self.l == other.l
 
 @class_constraint(ConstList)
 def is_const_list(ctx: ConstraintContext):
