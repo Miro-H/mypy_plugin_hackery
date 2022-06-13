@@ -6,8 +6,6 @@ from PyDSL.Constraints import class_constraint, ConstraintContext
 U = TypeVar("U", bound=Annotated[int, ConvertRawLiterals])
 V = TypeVar("V", bound=Annotated[int, ConvertRawLiterals])
 
-# TODO: define type that produces new types as result dep on input (vector concatenation)
-
 @custom_types
 class ConstList(Generic[U]):
     def __init__(self, l: List) -> None:
