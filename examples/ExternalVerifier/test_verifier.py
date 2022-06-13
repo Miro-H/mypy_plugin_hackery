@@ -85,14 +85,28 @@ from PyDSL_Types import *
 ################### ConstList Test ###################
 ######################################################
 
-l1: ConstList[3] = ConstList(["l1"] * 3)
-l2: ConstList[2] = ConstList(["l2"] * 2)
+# c_l1: ConstList[3] = ConstList(["l1"] * 3)
+# c_l2: ConstList[2] = ConstList(["l2"] * 2)
 
-l3 = l1 + l2
+# c_l3 = c_l1 + c_l2
 
-l4: ConstList[5] = ConstList(["l1"] * 3 + ["l2"] * 2)
-print(l3.typed_eq(l4))
+# c_l4: ConstList[5] = ConstList(["l1"] * 3 + ["l2"] * 2)
+# print(c_l3.typed_eq(c_lp4))
 
 # Error: Argument 1 to "safe_eq" of "ConstList" has incompatible type "ConstList[Literal[6]]"; expected "ConstList[Literal[5]]"
 # l5: ConstList[6] = ConstList(["l5"] * 6)
 # print(l3.typed_eq(l5))
+
+
+######################################################
+################### EvenList Test ####################
+######################################################
+
+l1: EvenList[4] = EvenList(["l1"] * 4)
+l2: EvenList[2] = EvenList(["l2"] * 2)
+
+print(l1 + l2)
+
+# Error: only even lists can be added, got: EvenList[4] + EvenList[3]
+# l3: EvenList[3] = EvenList(["l3"] * 3)
+# print(l1 + l3)
