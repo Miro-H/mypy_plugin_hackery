@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"mypy.debugLogging": true,
+		"mypy.targets": []
+	}
+}
